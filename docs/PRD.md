@@ -34,6 +34,8 @@ Young cricketers outside academies have no cheap way to check their technique, a
 11. **Admin reference page.** Upload a pro clip, tag player, shot, view, handedness, source; the same browser pose code creates the reference. One-time import of the old CSVs.
 12. **Auth (ADR 0004).** Google sign-in, server-side sessions, CSRF, roles checked on every route.
 13. **Scouting (ADR 0005).** Discoverable opt-in for any age; guardian consent under 18; coach-only list; no contact details shown; contact requests; report; admin hide/ban.
+14. **English and Hindi from day 1.** Every screen, error, coaching text and drill plan in both languages; a language switch in the header; all copy in message files; the coach agent answers in the user's language, and the eval harness runs in both.
+15. **UI direction: the Scorer's book** ([docs/design/ui-direction.md](design/ui-direction.md)).
 
 ### Should have
 - Scouting filters: shot, score range, region, age band.
@@ -91,8 +93,8 @@ Ledger: new (Sports Insight Bot used Svelte 5)
 Part: Styling
 AI default: Tailwind + shadcn/ui
 Options: Tailwind | plain CSS with custom properties | CSS Modules | Open Props
-Pick: decided at the UI-direction step before slice 1 (recommendation: plain CSS with custom properties and nesting)
-Reason: to be written with the owner's UI choice.
+Pick: plain CSS with custom properties and nesting
+Reason: the Scorer's book direction is ruled grids, two inks and a paper ground; a small set of custom properties carries it, and utility classes would add nothing. Teaches modern CSS.
 Ledger: Sports Insight Bot used plain CSS
 ```
 ```
