@@ -6,6 +6,7 @@ Cricket technique analysis and scouting app. This repo is project 2 of the portf
 
 - **Git:** commit only under the user's own git identity. No `Co-Authored-By: Claude` line and no mention of Claude in commit messages, PR titles or PR text.
 - **Branch + PR per slice:** each slice works on its own branch (`slice/<NN>-<short-name>`) cut from `origin/main`. At the end of the slice, after its tests pass: one commit, push the branch, open a PR whose body says `Closes #<NN>` (issue number = slice number). Never push mid-slice, never push to `main` directly.
+- **Slice naming:** GitHub shares one number counter for issues and PRs, so PR numbers do not match slices. The slice number lives in the names: issue #NN = slice NN, branch `slice/NN-<short-name>`, PR title `Slice NN: <ticket title>`.
 - **Merging (merge rights granted by the owner on 2026-11-25):** the agent turns on auto-merge for each PR with `gh pr merge <n> --auto --merge --delete-branch`. The PR merges itself with a merge commit when the required CI check is green. Slice 1 adds the CI workflow and makes it a required check on `main`. Merged branches are deleted: GitHub deletes the remote branch, and the agent deletes the local branch and updates local `main`.
 - **README:** update `README.md` in the same commit as each slice, so it always matches the code.
 - **Docs first:** look up every library and platform API in Context7 before writing code for it. Solid is version 2 (`@solidjs/web`, `@solidjs/vite-plugin`); do not use Solid 1 APIs.
@@ -17,6 +18,10 @@ Cricket technique analysis and scouting app. This repo is project 2 of the portf
 ### Issue tracker
 
 The PRD is `docs/PRD.md`. Slice tickets are GitHub Issues #1-#11 on `v1d1tt/talent-bridge` (use the `gh` CLI). Each issue has a "Blocked by" line.
+
+### Design
+
+Product record: `PRODUCT.md`. UI brief: `docs/design/ui-direction.md` (the Scorer's book). Use the `impeccable` skill for UI work.
 
 ### Domain docs
 
