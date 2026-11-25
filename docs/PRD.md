@@ -34,15 +34,14 @@ Young cricketers outside academies have no cheap way to check their technique, a
 11. **Admin reference page.** Upload a pro clip, tag player, shot, view, handedness, source; the same browser pose code creates the reference. One-time import of the old CSVs.
 12. **Auth (ADR 0004).** Google sign-in, server-side sessions, CSRF, roles checked on every route.
 13. **Scouting (ADR 0005).** Discoverable opt-in for any age; guardian consent under 18; coach-only list; no contact details shown; contact requests; report; admin hide/ban.
-14. **English and Hindi from day 1.** Every screen, error, coaching text and drill plan in both languages; a language switch in the header; all copy in message files; the coach agent answers in the user's language, and the eval harness runs in both.
-15. **UI direction: the Scorer's book** ([docs/design/ui-direction.md](design/ui-direction.md)).
+14. **UI direction: the Scorer's book** ([docs/design/ui-direction.md](design/ui-direction.md)).
 
 ### Should have
 - Scouting filters: shot, score range, region, age band.
 - Stick-figure overlay on key frames.
 
 ### Will not do in v2
-In-app chat · badminton and other sports · LSTM or any forecast · storing full video · a learned scoring model · admin verification of coaches · email verification of guardians.
+In-app chat · languages other than English · badminton and other sports · LSTM or any forecast · storing full video · a learned scoring model · admin verification of coaches · email verification of guardians.
 
 ## 4. Inputs and outputs
 

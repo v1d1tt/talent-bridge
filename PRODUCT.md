@@ -13,7 +13,7 @@ SolidJS 2 + Vite + TypeScript frontend, served by a Go API on GCP Cloud Run. Pos
 ## Users
 
 - **Primary evaluator: a recruiter or hiring engineer** reviewing this as a portfolio project, mostly on a laptop, from the live link or the demo video. They spend minutes, not hours. They must understand what the app does and see it work quickly, and the craft must hold up when they click around.
-- **Athletes (13+, English or Hindi speakers):** cricketers outside academies. They film a few balls or shots and check the result right away on a phone, or review it later at home on a phone or laptop. Both scenes matter equally.
+- **Athletes (13+):** cricketers outside academies. They film a few balls or shots and check the result right away on a phone, or review it later at home on a phone or laptop. Both scenes matter equally.
 - **Coaches:** scout for talent on a laptop. They filter discoverable athletes by shot and score and send contact requests.
 - **Admin (owner):** adds pro references and handles reports.
 
@@ -35,7 +35,7 @@ The clip never leaves the device: pose extraction runs in the browser. Every sco
 ## Capabilities and Constraints
 
 - Shots: all cricket batting shots and bowling types, each with its own reference set per view. A shot is offered only with 3+ references and a passing leave-one-pro-out test.
-- Two languages from day 1: English and Hindi (UI, errors, coaching text, drill plan). The domain words in `GLOSSARY.md` need agreed Hindi terms.
+- English only for now (UI, errors, coaching text, drill plan). Other languages are out of scope for v2.
 - Stored per analysis: pose sequence, metrics, score, faults, coaching, 2-3 key frames. No video.
 - Scouting: discoverable is opt-in for any age; guardian consent under 18; coaches never see contact details before an accepted contact request (ADR 0005).
 - Known limits that must be stated, not hidden: front-on 2D metrics are less exact; the score test proves only that pros score high.
@@ -58,9 +58,7 @@ The clip never leaves the device: pose extraction runs in the browser. Every sco
 2. One fix at a time: lead with the single most important fault, then the rest.
 3. Honest numbers: every number traces to a measurement; limits are stated where they apply.
 4. Privacy by default: the clip stays on the device, discoverable is off until chosen, contact details are never shown first.
-5. Equal in both languages: Hindi is a first-class language, not a later translation.
 
 ## Accessibility & Inclusion
 
 - WCAG 2.2 AA: contrast, large touch targets on phones, full keyboard use on laptops, reduced-motion support.
-- English and Hindi (Devanagari) at equal quality: type must render Devanagari well, and layouts must allow longer Hindi strings.
