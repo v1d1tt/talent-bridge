@@ -14,7 +14,7 @@ A cricket scorer's book. A scorer records every ball in ruled cells, with neat i
 
 - **Paper and rule:** a light ruled paper ground; hairline rules form the grid of every table, list and form. No cards with shadows, no gradients, no glass.
 - **Ink, not paint:** blue-black ink for print and data; red ink only for faults; blue ballpoint ink only for the coach's notes. Colour strategy: restrained (neutrals + 2 inks with fixed meanings).
-- **Type:** a text serif with a matching Devanagari cut (sketch used Noto Serif + Noto Serif Devanagari) for all print. A handwriting face with Latin + Devanagari (sketch used Kalam) only for the coach's notes and fault marks. Numbers use tabular figures. Pick final faces in slice 1; both scripts at equal quality.
+- **Type:** a text serif for all print (the sketch used Noto Serif). A handwriting face (the sketch used Kalam) only for the coach's notes and fault marks. Numbers use tabular figures. Pick final faces in slice 1.
 - **Marks as state:** `·` = measured and fine, a red `✗` + value = fault, empty cell = not measured yet, a struck-through cell = not measured (low visibility). Same marks in every screen.
 
 ## Structure across surfaces
@@ -34,7 +34,7 @@ When the server returns a score, the sheet fills in cell by cell (phase by phase
 
 ## States the build must design
 
-First innings (empty book) · pose extraction in progress (frame counter, the skeleton plate draws live) · unclear view rejected (plain reason + how to film again) · shot gated off ("not enough pro references yet") · scoring in progress · coach agent fallback (template note, marked as such) · offline / server cold start · Hindi strings longer than English.
+First innings (empty book) · pose extraction in progress (frame counter, the skeleton plate draws live) · unclear view rejected (plain reason + how to film again) · shot gated off ("not enough pro references yet") · scoring in progress · coach agent fallback (template note, marked as such) · offline / server cold start.
 
 ## Boundaries
 
@@ -47,10 +47,9 @@ First innings (empty book) · pose extraction in progress (frame counter, the sk
 
 - SolidJS 2 + Vite, plain CSS with custom properties and nesting (no Tailwind).
 - WCAG 2.2 AA; ink colours must pass contrast on the paper ground; red is never the only fault signal (the `✗` mark carries it too).
-- English and Hindi from day 1; language switch in the header; all copy in message files.
+- English only for now.
 - Phone first for athlete screens, laptop first for coach and admin screens.
 
 ## Open decisions (for the build, not to be invented later)
 
-- Final font files and the exact ink and paper values (slice 1, checked against AA in both scripts).
-- Hindi domain terms for the glossary words (owner to confirm the list in slice 1).
+- Final font files and the exact ink and paper values (slice 1, checked against AA).
