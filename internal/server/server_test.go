@@ -74,9 +74,10 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 	defer func() { _ = res.Body.Close() }()
 	for header, want := range map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"Referrer-Policy":        "strict-origin-when-cross-origin",
-		"X-Frame-Options":        "DENY",
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "strict-origin-when-cross-origin",
+		"X-Frame-Options":           "DENY",
+		"Strict-Transport-Security": "max-age=63072000; includeSubDomains",
 	} {
 		if got := res.Header.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)

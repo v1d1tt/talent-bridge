@@ -11,25 +11,60 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/v1d1tt/talent-bridge/internal/auth"
 	"github.com/v1d1tt/talent-bridge/internal/health"
 )
 
 // Config is what the handler needs.
 type Config struct {
-	StaticDir string       // the Vite build output (web/dist)
-	Probe     health.Probe // the database check
-	Version   string       // git commit of this build
+	StaticDir string        // the Vite build output (web/dist)
+	Probe     health.Probe  // the database check
+	Version   string        // git commit of this build
+	Auth      *auth.Service // sign-in and access checks; nil means sign-in is off
+}
+
+// Route is one entry of the server's route table. Every route has an access
+// rule; the zero rule denies everyone (deny by default).
+type Route struct {
+	Pattern string // method + path, as for http.ServeMux
+	Access  auth.Access
+	Handler http.HandlerFunc
+}
+
+// Routes is the route table: the only place that says who may call what.
+// The route x role test (server_test.go) fails when a route here has no row.
+func Routes(cfg Config) []Route {
+	a := cfg.Auth
+	return []Route{
+		{"GET /api/health", auth.Public, health.Handler(cfg.Probe, cfg.Version).ServeHTTP},
+		{"GET /auth/google/start", auth.Public, a.Start},
+		{"GET " + auth.CallbackPath, auth.Public, a.Callback},
+		{"POST /auth/signout", auth.SignedIn, a.SignOut},
+		{"GET /api/me", auth.Optional, a.Me},
+		{"POST /api/me/role", auth.SignedIn, a.ChooseRole},
+	}
 }
 
 // New returns the app's root handler. Routing uses the Go standard library
 // (method + path patterns, Go 1.22+); see docs/learning/01.md for why not chi.
 func New(cfg Config) http.Handler {
+	if cfg.Auth == nil {
+		cfg.Auth = auth.Disabled()
+	}
 	mux := http.NewServeMux()
-	mux.Handle("GET /api/health", health.Handler(cfg.Probe, cfg.Version))
-	// The /api/ catch-all would answer other methods on a known path with 404,
-	// so a known path names its wrong methods explicitly.
-	mux.HandleFunc("/api/health", jsonError(http.StatusMethodNotAllowed, "method_not_allowed"))
+	paths := map[string]bool{}
+	for _, rt := range Routes(cfg) {
+		mux.Handle(rt.Pattern, cfg.Auth.Guard(rt.Access, rt.Handler))
+		_, p, _ := strings.Cut(rt.Pattern, " ")
+		paths[p] = true
+	}
+	// The catch-alls below would answer other methods on a known path with
+	// 404, so each known path names its wrong methods explicitly.
+	for p := range paths {
+		mux.HandleFunc(p, jsonError(http.StatusMethodNotAllowed, "method_not_allowed"))
+	}
 	mux.HandleFunc("/api/", jsonError(http.StatusNotFound, "not_found"))
+	mux.HandleFunc("/auth/", jsonError(http.StatusNotFound, "not_found"))
 	mux.Handle("/", spa(cfg.StaticDir))
 	return securityHeaders(mux)
 }
@@ -79,6 +114,8 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("X-Frame-Options", "DENY")
+		// Browsers ignore HSTS on plain-HTTP responses, so this is safe on localhost.
+		h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		next.ServeHTTP(w, r)
 	})
 }

@@ -4,8 +4,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [solid()],
   server: {
-    // `npm run dev` serves the page on :5173 and sends /api to the Go server on :8080.
-    proxy: { "/api": "http://localhost:8080" },
+    // `npm run dev` serves the page on :5173 and sends /api and /auth to the Go server on :8080.
+    proxy: { "/api": "http://localhost:8080", "/auth": "http://localhost:8080" },
   },
   test: {
     environment: "jsdom",

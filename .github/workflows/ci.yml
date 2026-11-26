@@ -79,6 +79,7 @@ jobs:
         run: |
           (cd web && npm run build)
           go build -ldflags "-X main.version=${GITHUB_SHA::7}" -o bin/server ./cmd/server
+          go build -o bin/fake-google ./cmd/fake-google # the e2e tests sign in through it
 
       - name: Install Playwright browser
         working-directory: web
@@ -149,6 +150,9 @@ jobs:
         id: deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
         run: |
           az extension add --name containerapp --upgrade --yes --only-show-errors
           # The environment is an "express" environment: one active revision per
@@ -156,23 +160,34 @@ jobs:
           # use a second app: main -> talent-bridge (live), slice/* -> talent-bridge-preview.
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then target="$APP"; else target="${APP}-preview"; fi
 
-          if az containerapp show -n "$target" -g "$RG" --only-show-errors >/dev/null 2>&1; then
-            # The secret is set on every deploy, so GitHub stays the one place it is kept.
-            az containerapp secret set -n "$target" -g "$RG" --only-show-errors \
-              --secrets "database-url=$DATABASE_URL" >/dev/null
-            az containerapp update -n "$target" -g "$RG" --only-show-errors \
-              --image "$IMAGE" \
-              --set-env-vars "DATABASE_URL=secretref:database-url" >/dev/null
+          # Secrets are set on every deploy, so GitHub stays the one place they are
+          # kept. The app reads them through secretref:, never as plain env values.
+          secrets=("database-url=$DATABASE_URL")
+          envs=("DATABASE_URL=secretref:database-url")
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            secrets+=("google-client-secret=$GOOGLE_CLIENT_SECRET" "admin-emails=${ADMIN_EMAILS:-none}")
+            envs+=("GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" "GOOGLE_CLIENT_SECRET=secretref:google-client-secret" "ADMIN_EMAILS=secretref:admin-emails")
           else
-            # First deploy of this app: create it.
+            echo "::warning::GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set: sign-in stays off on $target."
+          fi
+
+          if ! az containerapp show -n "$target" -g "$RG" --only-show-errors >/dev/null 2>&1; then
+            # First deploy of this app: create it, then update it below like any other.
             az containerapp create -n "$target" -g "$RG" --environment "$ACA_ENV" --only-show-errors \
               --image "$IMAGE" \
               --ingress external --target-port 8080 \
               --min-replicas 0 --max-replicas 2 --cpu 0.25 --memory 0.5Gi \
-              --secrets "database-url=$DATABASE_URL" \
-              --env-vars "DATABASE_URL=secretref:database-url" >/dev/null
+              --secrets "${secrets[@]}" \
+              --env-vars "${envs[@]}" >/dev/null
           fi
           fqdn=$(az containerapp show -n "$target" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          # PUBLIC_URL builds the Google redirect URI: https://<fqdn>/auth/google/callback.
+          envs+=("PUBLIC_URL=https://$fqdn")
+          az containerapp secret set -n "$target" -g "$RG" --only-show-errors --secrets "${secrets[@]}" >/dev/null
+          az containerapp update -n "$target" -g "$RG" --only-show-errors \
+            --image "$IMAGE" \
+            --set-env-vars "${envs[@]}" >/dev/null
+          echo "signin=$([ -n "$GOOGLE_CLIENT_SECRET" ] && echo on || echo off)" >> "$GITHUB_OUTPUT"
           revision=$(az containerapp show -n "$target" -g "$RG" --query properties.latestRevisionName -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
@@ -188,6 +203,20 @@ jobs:
             echo "attempt $i: not ready yet"; sleep 10
           done
           echo "health check failed: $body"; exit 1
+
+      - name: Check that sign-in sends the browser to Google
+        if: steps.deploy.outputs.signin == 'on'
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          # The server must answer with a redirect to accounts.google.com, carrying
+          # PKCE (S256), a state and a nonce, and the live callback URL.
+          loc=$(curl -sS -o /dev/null -w '%{redirect_url}' --max-time 20 "$URL/auth/google/start")
+          echo "$loc" | sed -E 's/(state|nonce|code_challenge)=[^&]*/\1=.../g'
+          case "$loc" in https://accounts.google.com/*) ;; *) echo "::error::not sent to Google"; exit 1 ;; esac
+          for p in code_challenge_method=S256 'state=' 'nonce=' "redirect_uri=$(printf %s "$URL/auth/google/callback" | jq -sRr @uri)"; do
+            echo "$loc" | grep -q -- "$p" || { echo "::error::auth URL lacks $p"; exit 1; }
+          done
 
       - name: Summary
         run: echo "### Deployed ${GITHUB_SHA::7} to ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
