@@ -82,7 +82,7 @@ docs/learning/       one learning note per slice
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request:
 
 1. **Lint and test** (required on `main`): golangci-lint, gofmt, `sqlc diff`, Go tests against a Postgres service container, TypeScript type check, Vitest, then a Playwright smoke test against the real Go server.
-2. **Deploy to Azure Container Apps** (pushes only, after tests pass): builds the image, pushes it to GitHub Container Registry (`ghcr.io`) and deploys a new revision. A push to `main` gets all traffic. A push to a `slice/*` branch deploys a preview revision with no traffic, under its own label URL. Azure trusts GitHub through OIDC (a managed identity with a federated credential), so no key is stored anywhere. The database URL is a GitHub Actions secret that the deploy copies into a Container Apps secret.
+2. **Deploy to Azure Container Apps** (pushes only, after tests pass): builds the image, pushes it to GitHub Container Registry (`ghcr.io`) and deploys a new revision. A push to `main` updates the live app. A push to a `slice/*` branch deploys the same image to a separate preview app (`talent-bridge-preview`) with its own URL, so a slice is checked live before merge. Azure trusts GitHub through OIDC (a managed identity with a federated credential), so no key is stored anywhere. The database URL is a GitHub Actions secret that the deploy copies into a Container Apps secret.
 
 How CI, Docker and Azure Container Apps fit together is explained for beginners in [docs/learning/01.md](docs/learning/01.md).
 

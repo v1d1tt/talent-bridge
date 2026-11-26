@@ -11,7 +11,7 @@ ADR 0003 picked GCP Cloud Run. Cloud Run needs a GCP billing account with a work
 - The subscription is **Azure for Students**: sign-up with the university email, no credit card.
 - Images go to **GitHub Container Registry** (`ghcr.io/v1d1tt/talent-bridge`, public), not Azure Container Registry, because ACR has no free tier.
 - GitHub deploys with **OIDC**: a user-assigned managed identity has a federated credential that trusts tokens from the repo's `azure` GitHub environment, and it has the Contributor role on the `talent-bridge` resource group only. No client secret or key exists.
-- **Multiple revision mode.** A push to `main` pins all traffic to its revision. A push to a `slice/*` branch adds a revision with no traffic, under a label (`slice-NN`) that has its own URL.
+- **Two apps, single revision mode.** A push to `main` deploys the live app `talent-bridge`; a push to a `slice/*` branch deploys the same image to `talent-bridge-preview`, which has its own URL. (The first plan used one app in multiple revision mode with a label per slice, but the environment Azure created is an *express* environment, which allows only single revision mode.)
 - `DATABASE_URL` is a GitHub Actions secret, copied into a Container Apps secret on each deploy and read through `secretref:`.
 - Key frames (slice 3) move from Cloud Storage to **Azure Blob Storage** with SAS upload URLs.
 
@@ -24,4 +24,6 @@ ADR 0003 picked GCP Cloud Run. Cloud Run needs a GCP billing account with a work
 - The ledger gap "a major cloud" is closed with Azure instead of GCP.
 - Student credit and the monthly free grant (180,000 vCPU-seconds, 360,000 GiB-seconds and 2 million requests per subscription) cover this app. When the student offer ends, the subscription must move to pay-as-you-go or the app moves again; the image needs no change.
 - Cold start: scale-to-zero on Container Apps plus Neon's own scale-to-zero means the first request after idle can take several seconds. The page already says so.
+- The environment is a Container Apps **express** environment (a preview offering): no multiple revision mode, no custom domains, no Dapr or internal app-to-app names. None of these are needed now; a custom domain would need a standard environment.
+- Student subscriptions allow only 5 regions (indonesiacentral, malaysiawest, eastasia, polandcentral, uaenorth). The app runs in `malaysiawest`, about 300 km from the Neon database in Singapore (Neon has no India region).
 - Google sign-in (ADR 0004) and Gemini (coach agent) do not depend on GCP billing, so they are not affected.

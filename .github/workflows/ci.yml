@@ -1,7 +1,6 @@
 # CI: every push and pull request runs lint and all three test layers.
-# Deploy: a push to main deploys to Azure Container Apps and gets all traffic;
-# a push to a slice/* branch deploys a preview revision that gets no traffic,
-# under its own label URL.
+# Deploy: a push to main deploys the live app on Azure Container Apps;
+# a push to a slice/* branch deploys the same image to a separate preview app.
 name: CI
 
 on:
@@ -105,8 +104,10 @@ jobs:
     if: github.event_name != 'pull_request' && vars.AZURE_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Azure trusts GitHub tokens from this environment only (federated credential
-    # subject "repo:v1d1tt/talent-bridge:environment:azure").
+    # Azure trusts GitHub tokens from this environment only. The federated
+    # credential subject must match GitHub's token exactly; GitHub's subject
+    # includes the owner and repo IDs:
+    # "repo:v1d1tt@214258466/talent-bridge@1164844077:environment:azure".
     environment: azure
     concurrency:
       group: deploy
@@ -150,43 +151,31 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           az extension add --name containerapp --upgrade --yes --only-show-errors
-          # Revision names: talent-bridge--c<sha7>-<attempt> (a re-run gets a new name).
+          # The environment is an "express" environment, which allows only single
+          # revision mode. So previews use a second app instead of revision labels:
+          # main -> talent-bridge (live), slice/* -> talent-bridge-preview.
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then target="$APP"; else target="${APP}-preview"; fi
+          # Revision names: <app>--c<sha7>-<attempt> (a re-run gets a new name).
           suffix="c${GITHUB_SHA::7}-${GITHUB_RUN_ATTEMPT}"
-          revision="${APP}--${suffix}"
-          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "revision=${target}--${suffix}" >> "$GITHUB_OUTPUT"
 
-          if az containerapp show -n "$APP" -g "$RG" --only-show-errors >/dev/null 2>&1; then
+          if az containerapp show -n "$target" -g "$RG" --only-show-errors >/dev/null 2>&1; then
             # The secret is set on every deploy, so GitHub stays the one place it is kept.
-            az containerapp secret set -n "$APP" -g "$RG" --only-show-errors \
+            az containerapp secret set -n "$target" -g "$RG" --only-show-errors \
               --secrets "database-url=$DATABASE_URL" >/dev/null
-            az containerapp update -n "$APP" -g "$RG" --only-show-errors \
+            az containerapp update -n "$target" -g "$RG" --only-show-errors \
               --image "$IMAGE" --revision-suffix "$suffix" \
               --set-env-vars "DATABASE_URL=secretref:database-url" >/dev/null
           else
-            # First deploy: create the app. Multiple revision mode lets a slice
-            # revision run next to the live one without taking its traffic.
-            az containerapp create -n "$APP" -g "$RG" --environment "$ACA_ENV" --only-show-errors \
-              --image "$IMAGE" --revision-suffix "$suffix" --revisions-mode multiple \
+            # First deploy of this app: create it.
+            az containerapp create -n "$target" -g "$RG" --environment "$ACA_ENV" --only-show-errors \
+              --image "$IMAGE" --revision-suffix "$suffix" --revisions-mode single \
               --ingress external --target-port 8080 \
               --min-replicas 0 --max-replicas 2 --cpu 0.25 --memory 0.5Gi \
               --secrets "database-url=$DATABASE_URL" \
               --env-vars "DATABASE_URL=secretref:database-url" >/dev/null
           fi
-
-          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            # Live: pin all traffic to this revision by name. Later slice
-            # revisions then start with 0% traffic.
-            az containerapp ingress traffic set -n "$APP" -g "$RG" --only-show-errors \
-              --revision-weight "$revision=100" >/dev/null
-            fqdn=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
-          else
-            # Preview: slice/01-walking-skeleton -> label "slice-01", with its own URL.
-            label=$(echo "$GITHUB_REF_NAME" | sed -E 's#^slice/([0-9]+).*#slice-\1#; s#[^a-z0-9-]#-#g' | cut -c1-30)
-            az containerapp revision label add -n "$APP" -g "$RG" --only-show-errors \
-              --revision "$revision" --label "$label" --yes >/dev/null
-            domain=$(az containerapp env show -n "$ACA_ENV" -g "$RG" --query properties.defaultDomain -o tsv)
-            fqdn="${APP}---${label}.${domain}"
-          fi
+          fqdn=$(az containerapp show -n "$target" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test the deployed URL
