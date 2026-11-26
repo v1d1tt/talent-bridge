@@ -11,7 +11,7 @@ Cricket technique analysis and scouting app. This repo is project 2 of the portf
 - **README:** update `README.md` in the same commit as each slice, so it always matches the code.
 - **Docs first:** look up every library and platform API in Context7 before writing code for it. Solid is version 2 (`@solidjs/web`, `@solidjs/vite-plugin`); do not use Solid 1 APIs.
 - **Learning notes:** each slice adds `docs/learning/<NN>.md`.
-- **Secrets:** never commit `.env` files, Google OAuth secrets, Gemini keys or GCP credentials. CI deploys with Workload Identity Federation, not JSON keys.
+- **Secrets:** never commit `.env` files, Google OAuth secrets, Gemini keys or cloud credentials. CI deploys to Azure with OIDC (a managed identity with a federated credential), not stored keys.
 
 ## Agent skills
 

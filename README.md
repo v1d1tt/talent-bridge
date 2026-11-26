@@ -1,16 +1,91 @@
 # Talent-Bridge
 
-Talent-Bridge started as my first hackathon build (Feb 2026), and the team did not finish it. I am now rebuilding it as v2.
+An athlete records a cricket clip, and Talent-Bridge scores the technique against pro players for that exact shot and camera view. It shows the faults that matter most and gives a drill plan. Athletes can choose to be found by coaches.
 
-**v2 goal:** an athlete records a cricket clip, and the app scores the technique against pro players for that exact shot and camera view. The app shows the main faults and gives a drill plan. Athletes can choose to be found by coaches.
+Talent-Bridge started as my first hackathon build (Feb 2026), which the team did not finish. This is the v2 rebuild.
 
-**Status:** planning is done, and the build has not started. The plan is in these files:
+**Status:** slice 1 of 11 is built: the walking skeleton. The page, the Go server and the Postgres database are connected end to end, tested in CI and deployed to Azure Container Apps. Recording, pose and scoring come in the next slices (GitHub issues #2-#11).
 
-- [docs/PRD.md](docs/PRD.md): requirements, stack, data model, API and slices
-- [GLOSSARY.md](GLOSSARY.md): domain words
-- [docs/adr/](docs/adr/): architecture decisions
-- Slices: GitHub issues #1-#11
+**Live:** https://talent-bridge.livelyplant-beb9c42a.malaysiawest.azurecontainerapps.io · the Settings page ([/settings](https://talent-bridge.livelyplant-beb9c42a.malaysiawest.azurecontainerapps.io/settings)) shows the live system status. The app scales to zero, so the first visit after a quiet period can take a few seconds.
 
-**Planned stack:** Go 1.27 (sqlc, goose, Google ADK for Go v2) · Postgres on Neon · SolidJS 2 + Vite · MediaPipe Pose Landmarker in the browser · Docker on GCP Cloud Run.
+## What works now
 
-The old hackathon code (Python, OpenCV, an LSTM, Gemini) is still in the repo. Slice 1 removes it, and it stays in the git history.
+- `GET /api/health` reports the server, the database connection, its latency and the schema (migration) version. It answers 503 when the database is down and never shows the database error to the client.
+- The home page says what the app will do. The Settings page shows the system status as a ruled sheet and has a "Check again" button.
+- On start, the server applies the database migrations (goose). A Postgres advisory lock makes two instances that start together take turns.
+
+## Stack
+
+| Part | Choice | Why |
+|---|---|---|
+| Frontend | SolidJS 2.0.3, `@solidjs/router` 2.0.1, Vite 8.3, TypeScript 6.0 | Signals and JSX with no virtual DOM; Go serves the API, so no SSR is needed |
+| Styling | Plain CSS with custom properties and nesting, system UI font | The "Scorer's book" direction: ruled hairlines, paper and two inks ([docs/design/ui-direction.md](docs/design/ui-direction.md)) |
+| Backend | Go 1.27, standard library `net/http` routing | Typed, fast, one small static binary |
+| Database | Postgres on Neon (prod), Postgres 18 in Docker (local and CI) | Plain Postgres; Neon scales to zero |
+| Data access | sqlc 1.31 (type-safe Go from plain SQL), pgx 5.13, goose 3.30 (migrations) | You write SQL; the compiler checks the Go |
+| Host | Docker image on Azure Container Apps (Azure for Students), min replicas 0; image on ghcr.io | One image holds the binary and the built page; scales to zero. Moved from GCP Cloud Run because GCP billing setup failed ([ADR 0006](docs/adr/0006-azure-container-apps-host.md)) |
+| Tests | `go test`, Vitest 5.1, Playwright 1.65 | One tool per layer |
+| CI/CD | GitHub Actions; deploy to Azure with OIDC (no stored keys) | Every push is tested; only `main` gets traffic |
+
+The full plan is in [docs/PRD.md](docs/PRD.md); the words are defined in [GLOSSARY.md](GLOSSARY.md); decisions are in [docs/adr/](docs/adr/).
+
+## Run it from a fresh clone
+
+You need Go 1.27, Node 24+, Docker, and (for `make generate` only) sqlc.
+
+```bash
+git clone https://github.com/v1d1tt/talent-bridge.git
+cd talent-bridge
+(cd web && npm ci && npx playwright install chromium)
+make check        # lint, Go tests, Vitest and the Playwright smoke test (starts a Postgres container)
+```
+
+Run the app locally:
+
+```bash
+make db                                   # a throwaway Postgres on localhost:54329
+echo 'DATABASE_URL=postgres://postgres:postgres@localhost:54329/talent_bridge?sslmode=disable' > .env
+make run                                  # http://localhost:8080
+```
+
+`.env` is git-ignored. To use Neon instead, put its direct (not pooled) connection string in `.env`.
+
+For frontend work with hot reload, run `make run` in one terminal and `make dev` in another, then open http://localhost:5173 (Vite sends `/api` to the Go server).
+
+Build and run the production image:
+
+```bash
+make docker
+docker run -p 8080:8080 -e DATABASE_URL='postgres://postgres:postgres@host.docker.internal:54329/talent_bridge?sslmode=disable' talent-bridge:local
+```
+
+`make help` lists every command.
+
+## Project layout
+
+```
+cmd/server/          main: config from env, JSON logs, clean shutdown
+internal/server/     routes, static files with SPA fallback, security headers
+internal/health/     GET /api/health
+internal/database/   pgx pool, goose migrations with an advisory lock
+internal/store/      Go code generated by sqlc (do not edit)
+db/migrations/       goose SQL migrations (embedded in the binary)
+db/queries/          SQL queries, input for sqlc
+web/                 SolidJS app (src/), Vitest tests, Playwright smoke tests (e2e/)
+Dockerfile           three stages: Node build, Go build, distroless runtime
+.github/workflows/   CI and deploy
+docs/learning/       one learning note per slice
+```
+
+## CI and deploy
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request:
+
+1. **Lint and test** (required on `main`): golangci-lint, gofmt, `sqlc diff`, Go tests against a Postgres service container, TypeScript type check, Vitest, then a Playwright smoke test against the real Go server.
+2. **Deploy to Azure Container Apps** (pushes only, after tests pass): builds the image, pushes it to GitHub Container Registry (`ghcr.io`) and deploys a new revision. A push to `main` gets all traffic. A push to a `slice/*` branch deploys a preview revision with no traffic, under its own label URL. Azure trusts GitHub through OIDC (a managed identity with a federated credential), so no key is stored anywhere. The database URL is a GitHub Actions secret that the deploy copies into a Container Apps secret.
+
+How CI, Docker and Azure Container Apps fit together is explained for beginners in [docs/learning/01.md](docs/learning/01.md).
+
+## Old code
+
+The 2026 hackathon code (Python, OpenCV, an LSTM, Gemini) was removed in slice 1; the pro broadcast clips and model files were also removed from the git history. The 12 pro cricket pose CSV files in `reference_data/cricket/` stay: slice 4 imports them as references. (`reference_data/badminton/` is out of scope and is not used.)

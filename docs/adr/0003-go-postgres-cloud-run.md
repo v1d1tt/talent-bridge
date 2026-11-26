@@ -1,6 +1,6 @@
 # 0003. Go API, Postgres on Neon, Docker on GCP Cloud Run
 
-- Status: accepted
+- Status: accepted; partly superseded by [0006](0006-azure-container-apps-host.md) (host: Cloud Run, Cloud Storage and the deploy action), 2026-11-26
 - Date: 2026-11-25
 
 ## Context

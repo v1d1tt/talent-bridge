@@ -30,7 +30,7 @@ Young cricketers outside academies have no cheap way to check their technique, a
 7. **Coach agent.** Google ADK for Go v2 with a Gemini model. Typed tools: `get_faults`, `get_history`, `compare_to_pro`, `build_drill_plan`. It explains the faults and builds a 4-week drill plan from the fixed drill catalogue. Template fallback when the model fails or fails the grounding check.
 8. **Eval harness in CI.** Fixed sessions; checks that every number in the agent's text matches a tool result, that drills come only from the catalogue, and that the fault order matches the scoring output.
 9. **History.** Every analysis is stored; a trend chart per shot. (The LSTM forecast is dropped.)
-10. **Stored per analysis:** pose sequence (compressed), metrics, score, faults, coaching text, 2-3 key frames in Cloud Storage. No video.
+10. **Stored per analysis:** pose sequence (compressed), metrics, score, faults, coaching text, 2-3 key frames in Azure Blob Storage. No video.
 11. **Admin reference page.** Upload a pro clip, tag player, shot, view, handedness, source; the same browser pose code creates the reference. One-time import of the old CSVs.
 12. **Auth (ADR 0004).** Google sign-in, server-side sessions, CSRF, roles checked on every route.
 13. **Scouting (ADR 0005).** Discoverable opt-in for any age; guardian consent under 18; coach-only list; no contact details shown; contact requests; report; admin hide/ban.
@@ -49,7 +49,7 @@ In-app chat · languages other than English · badminton and other sports · LST
 |---|---|
 | Pose sequence JSON: fps, frames[33 landmarks: x, y, visibility, world x/y/z] | Shot guess + confidence |
 | Handedness, confirmed shot | Score 0-100, view, phases, metric table vs reference range |
-| 2-3 key frame JPEGs (direct to Cloud Storage with a signed URL) | Closest pro, top faults, coaching text, drill plan |
+| 2-3 key frame JPEGs (direct to Azure Blob Storage with a SAS upload URL) | Closest pro, top faults, coaching text, drill plan |
 | Profile fields, discoverable, guardian consent | History chart data, scouting list, contact requests |
 
 Input limits: clip length 1-10 s, 15-60 fps, max 600 frames, one person. The API rejects other shapes with a 422 and a clear reason.
@@ -107,8 +107,8 @@ Ledger: new
 ```
 Part: Host
 AI default: Vercel
-Options: Vercel | Fly.io | GCP Cloud Run | AWS App Runner
-Pick: GCP Cloud Run (one Docker image: Go binary + built Solid files), min instances 0; Cloud Storage for key frames; deploy via google-github-actions/deploy-cloudrun with Workload Identity Federation
+Options: Vercel | Fly.io | GCP Cloud Run | Azure Container Apps | AWS App Runner | Render
+Pick: Azure Container Apps (one Docker image: Go binary + built Solid files), min replicas 0; image on ghcr.io; Azure Blob Storage for key frames; deploy from GitHub Actions with OIDC (managed identity federated credential, no keys). Changed from GCP Cloud Run on 2026-11-26: GCP billing setup failed (ADR 0006)
 Reason: closes "Docker" and "major cloud" gaps; free tier covers a portfolio app.
 Ledger: new (Sports Insight Bot used Vercel)
 ```
@@ -125,7 +125,7 @@ Part: Agent / LLM
 AI default: OpenAI SDK + LangChain
 Options: LangChain | direct HTTP loop | Genkit Go | Google ADK for Go v2
 Pick: Google ADK for Go v2 (google.golang.org/adk/v2, v2.8.0, 2026-11-16) with a Gemini Flash model
-Reason: fresh-tech-scan pick; typed function tools (functiontool.New) inside the Go API; fits Gemini and Cloud Run. Model ID is picked in slice 7 by a small eval of the current Flash models (IDs change often; verify on ai.google.dev at build time).
+Reason: fresh-tech-scan pick; typed function tools (functiontool.New) inside the Go API, so it runs on any host; fits Gemini. Model ID is picked in slice 7 by a small eval of the current Flash models (IDs change often; verify on ai.google.dev at build time).
 Ledger: new (Sports Insight Bot used OpenRouter)
 ```
 ```
@@ -184,12 +184,12 @@ Indexes for scouting: `profiles(discoverable) where hidden_at is null`, `analyse
 | Leave-one-pro-out does not prove amateur ranking | Stated in README as a known limit |
 | Minors on a list for self-declared coaches | ADR 0005 safeguards; admin verification is the first follow-up if abuse appears |
 | Solid 2 is 8 days old | Context7 for every API; pin versions |
-| Cold starts (Cloud Run + Neon) | Clear loading state; warm-up call on page load |
+| Cold starts (Container Apps + Neon) | Clear loading state; warm-up call on page load |
 | Gemini model IDs change | Model picked by eval in slice 7; ID in config, not code |
 
 ## 9. Done means
 
-- Live on Cloud Run; URL in the README.
+- Live on Azure Container Apps; URL in the README.
 - CI required on `main`: Go lint + tests, Vitest, Playwright, leave-one-pro-out, agent eval.
 - Every slice merged by its own PR; a learning note per slice in `docs/learning/`.
 - State-machine pass and architecture pass done; review findings fixed.
@@ -201,9 +201,9 @@ Tracked as GitHub issues #1-#11 (issue number = slice number), each with a "Bloc
 
 | # | Slice | Blocked by |
 |---|---|---|
-| 1 | Walking skeleton: Solid page → Go `/api/health` + DB ping → Neon (migration 1) → Docker → Cloud Run; CI; repo cleanup | — |
+| 1 | Walking skeleton: Solid page → Go `/api/health` + DB ping → Neon (migration 1) → Docker → Azure Container Apps; CI; repo cleanup | — |
 | 2 | Google sign-in, auth sessions, CSRF, roles | 1 |
-| 3 | Browser pose: clip → pose sequence + stick figure → save analysis (no score yet) + key frames to Cloud Storage | 2 |
+| 3 | Browser pose: clip → pose sequence + stick figure → save analysis (no score yet) + key frames to Azure Blob Storage | 2 |
 | 4 | Admin reference page + import of the old CSVs | 3 |
 | 5 | Scoring for fast bowling side-on: view, phases, DTW, faults, score; leave-one-pro-out in CI; result screen | 4 |
 | 6 | Shot detection + confirm; shot gate for all shots and views | 5 |

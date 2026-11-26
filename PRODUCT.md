@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-SolidJS 2 + Vite + TypeScript frontend, served by a Go API on GCP Cloud Run. Pose extraction runs in the browser with MediaPipe Pose Landmarker. Full record: `docs/PRD.md` section 5.
+SolidJS 2 + Vite + TypeScript frontend, served by a Go API on Azure Container Apps. Pose extraction runs in the browser with MediaPipe Pose Landmarker. Full record: `docs/PRD.md` section 5.
 
 ## Users
 
