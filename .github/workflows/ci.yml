@@ -1,0 +1,193 @@
+# CI: every push and pull request runs lint and all three test layers.
+# Deploy: a push to main deploys the live app on Azure Container Apps;
+# a push to a slice/* branch deploys the same image to a separate preview app.
+name: CI
+
+on:
+  push:
+    branches: [main, "slice/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # This job name is the required status check on main.
+    name: Lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: test-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: talent_bridge
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/talent_bridge?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Go lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+
+      - name: Go format check
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: sqlc generated code is up to date
+        uses: sqlc-dev/setup-sqlc@v5
+        with:
+          sqlc-version: "1.31.1"
+      - run: sqlc diff
+
+      - name: Go tests (with the database tests)
+        run: go test -race ./...
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: TypeScript type check
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Vitest
+        working-directory: web
+        run: npm test
+
+      - name: Build page and server
+        run: |
+          (cd web && npm run build)
+          go build -ldflags "-X main.version=${GITHUB_SHA::7}" -o bin/server ./cmd/server
+
+      - name: Install Playwright browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright smoke test
+        working-directory: web
+        run: npx playwright test
+
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Azure Container Apps
+    needs: test
+    # Only pushes deploy (pull requests never get cloud credentials), and only
+    # after the owner has set the Azure variables in the repo settings.
+    if: github.event_name != 'pull_request' && vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Azure trusts GitHub tokens from this environment only. The federated
+    # credential subject must match GitHub's token exactly; GitHub's subject
+    # includes the owner and repo IDs:
+    # "repo:v1d1tt@214258466/talent-bridge@1164844077:environment:azure".
+    environment: azure
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write # push the image to ghcr.io
+      id-token: write # lets GitHub sign a short-lived OIDC token for Azure
+    env:
+      APP: talent-bridge
+      RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+      ACA_ENV: ${{ vars.AZURE_CONTAINERAPP_ENV }}
+      IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build and push the image to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build --build-arg VERSION="${GITHUB_SHA::7}" -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Check the image is public (Azure pulls it with no password)
+        run: |
+          docker logout ghcr.io
+          if ! docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "::error::The ghcr.io package is private. Make it public once: https://github.com/users/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/settings (Danger Zone > Change visibility > Public), then re-run this job."
+            exit 1
+          fi
+
+      - name: Sign in to Azure (no stored key)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy a new revision
+        id: deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          az extension add --name containerapp --upgrade --yes --only-show-errors
+          # The environment is an "express" environment: one active revision per
+          # app, and Azure names revisions itself (no revision suffix). So previews
+          # use a second app: main -> talent-bridge (live), slice/* -> talent-bridge-preview.
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then target="$APP"; else target="${APP}-preview"; fi
+
+          if az containerapp show -n "$target" -g "$RG" --only-show-errors >/dev/null 2>&1; then
+            # The secret is set on every deploy, so GitHub stays the one place it is kept.
+            az containerapp secret set -n "$target" -g "$RG" --only-show-errors \
+              --secrets "database-url=$DATABASE_URL" >/dev/null
+            az containerapp update -n "$target" -g "$RG" --only-show-errors \
+              --image "$IMAGE" \
+              --set-env-vars "DATABASE_URL=secretref:database-url" >/dev/null
+          else
+            # First deploy of this app: create it.
+            az containerapp create -n "$target" -g "$RG" --environment "$ACA_ENV" --only-show-errors \
+              --image "$IMAGE" \
+              --ingress external --target-port 8080 \
+              --min-replicas 0 --max-replicas 2 --cpu 0.25 --memory 0.5Gi \
+              --secrets "database-url=$DATABASE_URL" \
+              --env-vars "DATABASE_URL=secretref:database-url" >/dev/null
+          fi
+          fqdn=$(az containerapp show -n "$target" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          revision=$(az containerapp show -n "$target" -g "$RG" --query properties.latestRevisionName -o tsv)
+          echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test the deployed URL
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          echo "Deployed ${{ steps.deploy.outputs.revision }} to $URL"
+          # Cold start: the container and the Neon compute may both be asleep.
+          for i in 1 2 3 4 5 6 7 8; do
+            body=$(curl -fsS --max-time 20 "$URL/api/health") && echo "$body" | grep -q '"database":{"status":"up"' && { echo "$body"; exit 0; }
+            echo "attempt $i: not ready yet"; sleep 10
+          done
+          echo "health check failed: $body"; exit 1
+
+      - name: Summary
+        run: echo "### Deployed ${GITHUB_SHA::7} to ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"

@@ -35,7 +35,7 @@ The words below have one meaning everywhere in Talent-Bridge: in code, in the da
 | **Shot gate** | The rule that a shot + view is offered to users only when its reference set has 3 or more references and passes the leave-one-pro-out test. |
 | **Leave-one-pro-out test** | For each reference, score it against the other references of the same set. Each must score above the gate threshold. Runs in CI. |
 | **Session** (analysis) | One analysed clip: pose sequence, shot, view, score, faults, key frames, coaching text. Stored in the `analyses` table. Not the same as an auth session. |
-| **Key frame** | A still JPEG at a phase (for example release or contact), cut in the browser and stored in Cloud Storage. 2-3 per session. |
+| **Key frame** | A still JPEG at a phase (for example release or contact), cut in the browser and stored in Azure Blob Storage. 2-3 per session. |
 
 ## Coaching
 

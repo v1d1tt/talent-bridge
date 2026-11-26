@@ -1,0 +1,28 @@
+{
+  "name": "talent-bridge-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@solidjs/router": "2.0.1",
+    "@solidjs/web": "2.0.3",
+    "solid-js": "2.0.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@solidjs/testing-library": "1.0.0-rc.2",
+    "@solidjs/vite-plugin": "3.0.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@types/node": "24.19.2",
+    "jsdom": "31.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
+  }
+}

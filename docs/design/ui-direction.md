@@ -14,7 +14,19 @@ A cricket scorer's book. A scorer records every ball in ruled cells, with neat i
 
 - **Paper and rule:** a light ruled paper ground; hairline rules form the grid of every table, list and form. No cards with shadows, no gradients, no glass.
 - **Ink, not paint:** blue-black ink for print and data; red ink only for faults; blue ballpoint ink only for the coach's notes. Colour strategy: restrained (neutrals + 2 inks with fixed meanings).
-- **Type:** a text serif for all print (the sketch used Noto Serif). A handwriting face (the sketch used Kalam) only for the coach's notes and fault marks. Numbers use tabular figures. Pick final faces in slice 1.
+- **Type (owner's choice, 2026-11-25, slice 1):** the device's own UI font for everything: `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. No serif and no handwriting face; nothing to download. Coach notes use the same font in ballpoint ink. Numbers use tabular figures.
+- **Paper and inks (slice 1, contrast on the paper):**
+
+  | Token | Value | Use | Contrast |
+  |---|---|---|---|
+  | `--paper` | `#FBFBF8` | page ground | — |
+  | `--ink` | `#1C2430` | print, data, "connected" status | 15.1:1 |
+  | `--ink-muted` | `#5B6573` | secondary text, struck cells | 5.7:1 |
+  | `--ink-fault` | `#B42318` | faults only, always with `✗` | 6.3:1 |
+  | `--ink-coach` | `#1D3FAF` | coach's notes, focus ring | 8.5:1 |
+  | `--rule` | `#C8D4DD` | hairline rules (decorative) | 1.5:1 |
+  | `--rule-strong` | `#77838F` | control borders | 3.7:1 |
+
 - **Marks as state:** `·` = measured and fine, a red `✗` + value = fault, empty cell = not measured yet, a struck-through cell = not measured (low visibility). Same marks in every screen.
 
 ## Structure across surfaces
@@ -27,6 +39,7 @@ A cricket scorer's book. A scorer records every ball in ruled cells, with neat i
 | Scouting list (coach) | A scorecard summary: one ruled row per athlete (name, shots, best score, region, age band); filters as the header row. |
 | Admin references | The reference register: ruled rows per pro reference, with the shot-gate status per shot + view. |
 | Drill plan | A practice log: 4 weeks as ruled columns, drills written in. |
+| Settings (`/settings`, header link) | The back page of the book. Holds the system status sheet (server, database, schema, build). System status is not on the main page. "Connected" is marked in blue-black ink; there is no green anywhere. |
 
 ## Signature interaction
 
@@ -49,7 +62,3 @@ First innings (empty book) · pose extraction in progress (frame counter, the sk
 - WCAG 2.2 AA; ink colours must pass contrast on the paper ground; red is never the only fault signal (the `✗` mark carries it too).
 - English only for now.
 - Phone first for athlete screens, laptop first for coach and admin screens.
-
-## Open decisions (for the build, not to be invented later)
-
-- Final font files and the exact ink and paper values (slice 1, checked against AA).

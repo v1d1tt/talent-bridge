@@ -1,4 +1,18 @@
+# Secrets: never commit
 .env
+.env.*
+
+# Build output
+bin/
+web/dist/
+web/node_modules/
+web/test-results/
+web/playwright-report/
+
+# Old Python artefacts (removed from history)
 __pycache__/
 *.h5
 *.pkl
+
+# macOS
+.DS_Store
