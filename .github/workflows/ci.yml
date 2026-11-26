@@ -151,32 +151,31 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           az extension add --name containerapp --upgrade --yes --only-show-errors
-          # The environment is an "express" environment, which allows only single
-          # revision mode. So previews use a second app instead of revision labels:
-          # main -> talent-bridge (live), slice/* -> talent-bridge-preview.
+          # The environment is an "express" environment: one active revision per
+          # app, and Azure names revisions itself (no revision suffix). So previews
+          # use a second app: main -> talent-bridge (live), slice/* -> talent-bridge-preview.
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then target="$APP"; else target="${APP}-preview"; fi
-          # Revision names: <app>--c<sha7>-<attempt> (a re-run gets a new name).
-          suffix="c${GITHUB_SHA::7}-${GITHUB_RUN_ATTEMPT}"
-          echo "revision=${target}--${suffix}" >> "$GITHUB_OUTPUT"
 
           if az containerapp show -n "$target" -g "$RG" --only-show-errors >/dev/null 2>&1; then
             # The secret is set on every deploy, so GitHub stays the one place it is kept.
             az containerapp secret set -n "$target" -g "$RG" --only-show-errors \
               --secrets "database-url=$DATABASE_URL" >/dev/null
             az containerapp update -n "$target" -g "$RG" --only-show-errors \
-              --image "$IMAGE" --revision-suffix "$suffix" \
+              --image "$IMAGE" \
               --set-env-vars "DATABASE_URL=secretref:database-url" >/dev/null
           else
             # First deploy of this app: create it.
             az containerapp create -n "$target" -g "$RG" --environment "$ACA_ENV" --only-show-errors \
-              --image "$IMAGE" --revision-suffix "$suffix" --revisions-mode single \
+              --image "$IMAGE" \
               --ingress external --target-port 8080 \
               --min-replicas 0 --max-replicas 2 --cpu 0.25 --memory 0.5Gi \
               --secrets "database-url=$DATABASE_URL" \
               --env-vars "DATABASE_URL=secretref:database-url" >/dev/null
           fi
           fqdn=$(az containerapp show -n "$target" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          revision=$(az containerapp show -n "$target" -g "$RG" --query properties.latestRevisionName -o tsv)
           echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test the deployed URL
         env:
