@@ -66,5 +66,8 @@ The words below have one meaning everywhere in Talent-Bridge: in code, in the da
 
 | Term | Meaning |
 |---|---|
-| **Auth session** | A server-side sign-in record in Postgres, pointed to by an httpOnly cookie. Not the same as an analysis session. |
-| **CSRF token** | A per-auth-session token that every state-changing request must send. |
+| **Auth session** | A server-side sign-in record in Postgres (`auth_sessions`), pointed to by an httpOnly cookie. It ends 7 days after its last use (idle expiry) or 30 days after sign-in (absolute expiry), whichever is first. Not the same as an analysis session. |
+| **CSRF token** | A per-auth-session token that every state-changing request must send in the `X-CSRF-Token` header. |
+| **Role** | `athlete`, `coach` or `admin`. A new user chooses athlete or coach once, at first sign-in (role choice). Admin is never chosen: it comes from the `ADMIN_EMAILS` setting, for a Google-verified email. |
+| **Access rule** | What a route needs: public, optional (anyone; the session is used if there is one), signed in, or one of some roles. A route with no rule lets nobody in (deny by default). |
+| **Fake Google** | The local OpenID Connect provider (`cmd/fake-google`) that tests and local development sign in through. The server trusts it only on localhost (ADR 0007). |
