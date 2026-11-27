@@ -202,7 +202,8 @@ jobs:
           # Key frames: the app signs in to Blob Storage as the user-assigned identity
           # talent-bridge-app (no key). The owner created it and gave it its roles once.
           if [ -n "$STORAGE_ACCOUNT" ]; then
-            read -r identity_id client_id < <(az identity show -g "$RG" -n talent-bridge-app --query '[id, clientId]' -o tsv | tr '\n' ' ')
+            identity_id=$(az identity show -g "$RG" -n talent-bridge-app --query id -o tsv)
+            client_id=$(az identity show -g "$RG" -n talent-bridge-app --query clientId -o tsv)
             az containerapp identity assign -n "$target" -g "$RG" --user-assigned "$identity_id" --only-show-errors -o none
             envs+=("BLOB_ACCOUNT_URL=https://$STORAGE_ACCOUNT.blob.core.windows.net" "BLOB_IDENTITY_CLIENT_ID=$client_id")
           else
