@@ -28,7 +28,7 @@ test("Settings shows a connected database, end to end", async ({ page }) => {
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { level: 2, name: "System status" })).toBeVisible();
   await expect(page.getByRole("row", { name: /Database/ })).toContainText("Connected");
-  await expect(page.getByRole("row", { name: /Schema/ })).toContainText("Migration 2");
+  await expect(page.getByRole("row", { name: /Schema/ })).toContainText("Migration 3");
   await expect(page.getByRole("status")).toHaveText("All parts are connected.");
 });
 

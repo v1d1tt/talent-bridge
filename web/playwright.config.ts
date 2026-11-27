@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 // CI builds both first; locally run `make e2e` from the repo root.
 const port = Number(process.env.E2E_PORT ?? 8090);
 const googlePort = Number(process.env.E2E_GOOGLE_PORT ?? 9998);
+// Azurite's public development key (not a secret); the server accepts it only on localhost.
+const azuriteKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -35,6 +37,9 @@ export default defineConfig({
         GOOGLE_CLIENT_ID: "fake-client",
         GOOGLE_CLIENT_SECRET: "fake-secret",
         ADMIN_EMAILS: "admin@example.com",
+        // Azurite (local Blob Storage) for key frames; prepared by bin/dev-blob.
+        BLOB_ACCOUNT_URL: process.env.TEST_BLOB_URL ?? "",
+        BLOB_ACCOUNT_KEY: process.env.TEST_BLOB_URL ? azuriteKey : "",
       },
       stdout: "pipe",
     },

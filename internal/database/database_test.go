@@ -37,8 +37,8 @@ func TestProbeMigratesAndReportsSchemaVersion(t *testing.T) {
 	for range 8 {
 		wg.Go(func() {
 			v, err := db.Probe(ctx)
-			if err == nil && v != 2 {
-				t.Errorf("schema version = %d, want 2", v)
+			if err == nil && v != 3 {
+				t.Errorf("schema version = %d, want 3", v)
 			}
 			errs <- err
 		})

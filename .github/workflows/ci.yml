@@ -33,8 +33,17 @@ jobs:
           --health-interval 2s --health-timeout 5s --health-retries 20
     env:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/talent_bridge?sslmode=disable
+      TEST_BLOB_URL: http://127.0.0.1:10000/devstoreaccount1
     steps:
       - uses: actions/checkout@v7
+
+      # Azurite stands in for Azure Blob Storage (key frames). It runs as a step,
+      # not a service, because it needs --skipApiVersionCheck: the Go SDK speaks
+      # a newer Storage API version than the emulator knows.
+      - name: Start Azurite
+        run: |
+          docker run -d --name azurite -p 10000:10000 mcr.microsoft.com/azure-storage/azurite:3.38.0 \
+            azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --loose
 
       - uses: actions/setup-go@v7
         with:
@@ -75,17 +84,26 @@ jobs:
         working-directory: web
         run: npm test
 
+      # The pose models (15 MB) are downloaded once per script/lockfile change.
+      - name: Cache the MediaPipe files
+        uses: actions/cache@v6
+        with:
+          path: web/public/mediapipe
+          key: mediapipe-${{ hashFiles('web/scripts/mediapipe.mjs', 'web/package-lock.json') }}
+
       - name: Build page and server
         run: |
           (cd web && npm run build)
           go build -ldflags "-X main.version=${GITHUB_SHA::7}" -o bin/server ./cmd/server
           go build -o bin/fake-google ./cmd/fake-google # the e2e tests sign in through it
+          go build -o bin/dev-blob ./cmd/dev-blob       # prepares Azurite for the e2e tests
+          ./bin/dev-blob http://localhost:8090
 
       - name: Install Playwright browser
         working-directory: web
         run: npx playwright install --with-deps chromium
 
-      - name: Playwright smoke test
+      - name: Playwright tests
         working-directory: web
         run: npx playwright test
 
@@ -153,6 +171,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
         run: |
           az extension add --name containerapp --upgrade --yes --only-show-errors
           # The environment is an "express" environment: one active revision per
@@ -180,6 +199,16 @@ jobs:
               --secrets "${secrets[@]}" \
               --env-vars "${envs[@]}" >/dev/null
           fi
+          # Key frames: the app signs in to Blob Storage as the user-assigned identity
+          # talent-bridge-app (no key). The owner created it and gave it its roles once.
+          if [ -n "$STORAGE_ACCOUNT" ]; then
+            read -r identity_id client_id < <(az identity show -g "$RG" -n talent-bridge-app --query '[id, clientId]' -o tsv | tr '\n' ' ')
+            az containerapp identity assign -n "$target" -g "$RG" --user-assigned "$identity_id" --only-show-errors -o none
+            envs+=("BLOB_ACCOUNT_URL=https://$STORAGE_ACCOUNT.blob.core.windows.net" "BLOB_IDENTITY_CLIENT_ID=$client_id")
+          else
+            echo "::warning::AZURE_STORAGE_ACCOUNT is not set: key frames stay off on $target."
+          fi
+
           fqdn=$(az containerapp show -n "$target" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           # PUBLIC_URL builds the Google redirect URI: https://<fqdn>/auth/google/callback.
           envs+=("PUBLIC_URL=https://$fqdn")
