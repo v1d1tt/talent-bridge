@@ -19,6 +19,28 @@ export class ClipError extends Error {
   }
 }
 
+/** How long opening a clip may take before it counts as not playable. */
+const OPEN_TIMEOUT_MS = 20_000;
+
+/** Waits until `ready()` is true (or `event` fires), or fails on error or time limit. */
+function waitFor(video: HTMLVideoElement, event: string, ready: () => boolean): Promise<void> {
+  if (ready()) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const done = (err?: ClipError) => {
+      clearTimeout(timer);
+      video.removeEventListener(event, ok);
+      video.removeEventListener("error", bad);
+      if (err) reject(err);
+      else resolve();
+    };
+    const ok = () => done();
+    const bad = () => done(new ClipError("not_video"));
+    const timer = setTimeout(bad, OPEN_TIMEOUT_MS);
+    video.addEventListener(event, ok);
+    video.addEventListener("error", bad);
+  });
+}
+
 /** Opens a picked file in a hidden <video>, ready to seek. */
 export async function openClip(file: File): Promise<HTMLVideoElement> {
   const video = document.createElement("video");
@@ -26,16 +48,16 @@ export async function openClip(file: File): Promise<HTMLVideoElement> {
   video.playsInline = true;
   video.preload = "auto";
   video.src = URL.createObjectURL(file);
-  await new Promise<void>((resolve, reject) => {
-    video.addEventListener("loadeddata", () => resolve(), { once: true });
-    video.addEventListener("error", () => reject(new ClipError("not_video")), { once: true });
-  });
-  // iOS Safari draws no frames from a video that never played; a muted
-  // play and pause unlocks it. Elsewhere this is harmless.
+  // iOS Safari ignores preload and loads no frame data (no "loadeddata")
+  // until the video plays. So: wait for the metadata only, then a muted
+  // play and pause loads the first frame and unlocks drawing. Elsewhere
+  // this is harmless. A time limit turns any other stall into an error.
+  await waitFor(video, "loadedmetadata", () => video.readyState >= HTMLMediaElement.HAVE_METADATA);
   await video.play().then(
     () => video.pause(),
     () => undefined,
   );
+  await waitFor(video, "loadeddata", () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
   const s = video.duration;
   if (!Number.isFinite(s) || video.videoWidth === 0) throw new ClipError("not_video");
   if (s < MIN_SECONDS) throw new ClipError("too_short", s);
