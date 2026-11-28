@@ -557,3 +557,184 @@ a:focus-visible {
     white-space: normal;
   }
 }
+
+/* ---- Slice 4: the reference register (admin) ---- */
+
+/* Wide ruled tables scroll sideways in their own box on a phone. */
+.scroll-x {
+  overflow-x: auto;
+  margin: 0 0 var(--space-3);
+}
+
+/* The admin's register is a laptop page: it gets a wider sheet than the reading pages. */
+.page:has(.register) {
+  max-width: 76rem;
+}
+
+/* Laptop first: the entry form beside the shot gates, the register below. */
+.register {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr); /* a phone: one column that never grows past the screen */
+  gap: var(--space-5);
+  max-width: 72rem;
+
+  @media (min-width: 60rem) {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+
+/* The entry form: the header fields of a page in the book. */
+.entry {
+  display: grid;
+  gap: var(--space-3);
+  border-top: 1px solid var(--ink);
+  padding-top: var(--space-3);
+}
+
+.entry__field {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 0 var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
+
+  & input[type="text"],
+  & select {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem; /* touch target */
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+  }
+
+  & input[type="text"]:focus-visible,
+  & select:focus-visible {
+    outline: 2px solid var(--ink-coach);
+    outline-offset: 1px;
+  }
+}
+
+.entry__label {
+  padding: 0;
+  font-weight: 700;
+}
+
+.entry__hint {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+}
+
+.entry__choices {
+  grid-template-columns: repeat(auto-fill, minmax(7rem, max-content));
+  column-gap: var(--space-4);
+
+  & .entry__label,
+  & .entry__hint {
+    grid-column: 1 / -1;
+  }
+}
+
+.entry__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  cursor: pointer;
+
+  & input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--ink);
+  }
+
+  & input:focus-visible {
+    outline: 2px solid var(--ink-coach);
+    outline-offset: 2px;
+  }
+}
+
+.entry > .action[type="submit"] {
+  justify-self: start;
+}
+
+.action:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+/* The shot gates: shots as rows, the two views as columns. */
+.gates {
+  & th[scope="col"] {
+    width: auto;
+  }
+
+  & th[scope="row"] {
+    width: auto;
+    font-weight: 400;
+  }
+}
+
+.gates__group {
+  padding-top: var(--space-3);
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.gate {
+  white-space: nowrap;
+}
+
+.gate__count {
+  display: block;
+  font-weight: 700;
+}
+
+.gate__needs,
+.gate__legacy {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+}
+
+.gate__ready {
+  display: block;
+  font-size: 0.875rem;
+}
+
+.register-table {
+  min-width: 44rem;
+
+  & th {
+    width: auto;
+  }
+
+  & .num {
+    padding-right: var(--space-3);
+  }
+}
+
+.register-table__source {
+  max-width: 16rem;
+  overflow-wrap: anywhere;
+}
+
+/* A small ruled label, like a note in the margin of the book. */
+.tag {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

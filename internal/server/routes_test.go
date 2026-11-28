@@ -34,6 +34,12 @@ var routeTable = map[string]struct {
 	"POST /api/analyses":                       {"", [5]int{401, 403, 503, 403, 403}},
 	"GET /api/analyses/{id}":                   {"", [5]int{401, 403, 503, 403, 403}},
 	"POST /api/analyses/{id}/key-frames/check": {"", [5]int{401, 403, 503, 403, 403}},
+	// Admin only. No reference service here (no database), so the admin gets
+	// 503; internal/reference tests the routes with a database.
+	"POST /api/admin/references":     {"", [5]int{401, 403, 403, 403, 503}},
+	"GET /api/admin/references":      {"", [5]int{401, 403, 403, 403, 503}},
+	"GET /api/admin/references/{id}": {"", [5]int{401, 403, 403, 403, 503}},
+	"GET /api/admin/shot-gates":      {"", [5]int{401, 403, 403, 403, 503}},
 }
 
 func TestRouteRoleTable(t *testing.T) {

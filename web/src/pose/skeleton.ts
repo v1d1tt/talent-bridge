@@ -16,6 +16,30 @@ export const BODY: ReadonlyArray<readonly [number, number]> = [
 
 const SEEN = 0.5;
 
+/**
+ * A landmark with all six values 0 was not measured at all: the old CSV
+ * references (ADR 0008) have only 13 of the 33 points. It is different
+ * from a landmark the model could not see (low visibility), which is drawn
+ * dashed.
+ */
+export function measured(l: Landmark): boolean {
+  return l.some((v) => v !== 0);
+}
+
+/** The body segments to draw: those whose two ends were measured. */
+export function drawnSegments(frame: Landmark[]): ReadonlyArray<readonly [number, number]> {
+  return BODY.filter(([a, b]) => measured(frame[a]) && measured(frame[b]));
+}
+
+/** Where the head circle goes (fractions of the frame); the ears, when measured, set its size. */
+export function head(frame: Landmark[]) {
+  const [n, le, re] = [frame[0], frame[7], frame[8]];
+  const fromEars = measured(le) && measured(re);
+  return fromEars
+    ? { x: (le[0] + re[0] + n[0]) / 3, y: (le[1] + re[1] + n[1]) / 3, fromEars, ears: [le[0], le[1], re[0], re[1]] }
+    : { x: n[0], y: n[1], fromEars, ears: [0, 0, 0, 0] };
+}
+
 export type Ink = {
   line: string;
   faint: string;
@@ -37,18 +61,19 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, frame: Landmark[] | 
   const lw = Math.max(2, w / 160);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  const segments = drawnSegments(frame);
 
   if (ink.halo) {
     ctx.strokeStyle = ink.halo;
     ctx.lineWidth = lw * 2.6;
     ctx.beginPath();
-    for (const [a, b] of BODY) {
+    for (const [a, b] of segments) {
       ctx.moveTo(...px(frame[a]));
       ctx.lineTo(...px(frame[b]));
     }
     ctx.stroke();
   }
-  for (const [a, b] of BODY) {
+  for (const [a, b] of segments) {
     const seen = frame[a][VIS] >= SEEN && frame[b][VIS] >= SEEN;
     ctx.strokeStyle = seen ? ink.line : ink.faint;
     ctx.lineWidth = seen ? lw : lw * 0.6;
@@ -60,15 +85,13 @@ export function drawSkeleton(ctx: CanvasRenderingContext2D, frame: Landmark[] | 
   }
   ctx.setLineDash([]);
 
-  // Head: a circle through the ears, centred between them.
-  const [lx, ly] = px(frame[7]);
-  const [rx, ry] = px(frame[8]);
-  const [nx, ny] = px(frame[0]);
-  const r = Math.max(Math.hypot(lx - rx, ly - ry) / 2, lw * 3);
+  // Head: a circle through the ears, centred between them and the nose.
+  const hd = head(frame);
+  const r = hd.fromEars ? Math.max(Math.hypot((hd.ears[0] - hd.ears[2]) * w, (hd.ears[1] - hd.ears[3]) * h) / 2, lw * 3) : lw * 3;
   ctx.strokeStyle = frame[0][VIS] >= SEEN ? ink.line : ink.faint;
   ctx.lineWidth = lw;
   ctx.beginPath();
-  ctx.arc((lx + rx + nx) / 3, (ly + ry + ny) / 3, r, 0, Math.PI * 2);
+  ctx.arc(hd.x * w, hd.y * h, r, 0, Math.PI * 2);
   ctx.stroke();
 
   // Joints as small filled dots.

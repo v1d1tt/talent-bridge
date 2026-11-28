@@ -15,6 +15,7 @@ import (
 	"github.com/v1d1tt/talent-bridge/internal/analysis"
 	"github.com/v1d1tt/talent-bridge/internal/auth"
 	"github.com/v1d1tt/talent-bridge/internal/health"
+	"github.com/v1d1tt/talent-bridge/internal/reference"
 )
 
 // Config is what the handler needs.
@@ -24,6 +25,8 @@ type Config struct {
 	Version   string            // git commit of this build
 	Auth      *auth.Service     // sign-in and access checks; nil means sign-in is off
 	Analyses  *analysis.Service // nil means no database: the analysis routes answer 503
+	// References is the admin's reference register; nil means no database (503).
+	References *reference.Service
 	// BlobOrigin is the Azure Blob Storage origin (https://<account>.blob.core.windows.net)
 	// the page uploads key frames to and loads them from; empty when key frames are off.
 	BlobOrigin string
@@ -40,8 +43,9 @@ type Route struct {
 // Routes is the route table: the only place that says who may call what.
 // The route x role test (server_test.go) fails when a route here has no row.
 func Routes(cfg Config) []Route {
-	a, an := cfg.Auth, cfg.Analyses
+	a, an, ref := cfg.Auth, cfg.Analyses, cfg.References
 	athlete := auth.Roles(auth.RoleAthlete)
+	admin := auth.Roles(auth.RoleAdmin)
 	return []Route{
 		{"GET /api/health", auth.Public, health.Handler(cfg.Probe, cfg.Version).ServeHTTP},
 		{"GET /auth/google/start", auth.Public, a.Start},
@@ -54,6 +58,11 @@ func Routes(cfg Config) []Route {
 		{"POST /api/analyses", athlete, an.Create},
 		{"GET /api/analyses/{id}", athlete, an.Get},
 		{"POST /api/analyses/{id}/key-frames/check", athlete, an.CheckKeyFrames},
+		// The admin's reference register and shot gates.
+		{"POST /api/admin/references", admin, ref.Create},
+		{"GET /api/admin/references", admin, ref.List},
+		{"GET /api/admin/references/{id}", admin, ref.Get},
+		{"GET /api/admin/shot-gates", admin, ref.Gates},
 	}
 }
 
@@ -65,6 +74,9 @@ func New(cfg Config) http.Handler {
 	}
 	if cfg.Analyses == nil {
 		cfg.Analyses = analysis.Disabled()
+	}
+	if cfg.References == nil {
+		cfg.References = reference.Disabled()
 	}
 	mux := http.NewServeMux()
 	paths := map[string]bool{}

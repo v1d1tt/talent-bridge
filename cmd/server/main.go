@@ -27,6 +27,7 @@ import (
 	"github.com/v1d1tt/talent-bridge/internal/blob"
 	"github.com/v1d1tt/talent-bridge/internal/database"
 	"github.com/v1d1tt/talent-bridge/internal/health"
+	"github.com/v1d1tt/talent-bridge/internal/reference"
 	"github.com/v1d1tt/talent-bridge/internal/server"
 )
 
@@ -62,6 +63,7 @@ func run() error {
 	var probe health.Probe = database.NotConfigured{}
 	var signIn *auth.Service
 	var analyses *analysis.Service
+	var references *reference.Service
 	var blobOrigin string
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		db, err := database.Open(ctx, url)
@@ -93,6 +95,7 @@ func run() error {
 			slog.Info("key frames are on", "storage", blobOrigin, "container", cfg.Container)
 		}
 		analyses = analysis.New(db, store)
+		references = reference.New(db)
 		// Settle key frames whose upload URLs expired (deletes junk and leftovers).
 		go analyses.RunSweeper(ctx, 5*time.Minute)
 		// Migrate in the background, so the first visitor does not wait for it.
@@ -107,7 +110,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cmp.Or(os.Getenv("PORT"), "8080"),
-		Handler:           server.New(server.Config{StaticDir: cmp.Or(os.Getenv("STATIC_DIR"), "web/dist"), Probe: probe, Version: version, Auth: signIn, Analyses: analyses, BlobOrigin: blobOrigin}),
+		Handler:           server.New(server.Config{StaticDir: cmp.Or(os.Getenv("STATIC_DIR"), "web/dist"), Probe: probe, Version: version, Auth: signIn, Analyses: analyses, References: references, BlobOrigin: blobOrigin}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

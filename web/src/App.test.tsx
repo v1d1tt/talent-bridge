@@ -178,3 +178,79 @@ describe("welcome page: role choice", () => {
     expect(await findByText("Sign in first, then choose your role.")).toBeInTheDocument();
   });
 });
+
+describe("reference register (admin)", () => {
+  const gate = (shot: string, name: string, discipline: "batting" | "bowling", view: "side_on" | "front_on", references: number, legacy = 0) => ({
+    shot, shot_name: name, discipline, view, references, legacy_references: legacy, lopo_passed: false, enabled: false,
+  });
+  const gates = {
+    min_references: 3,
+    gates: [
+      gate("fast_bowling", "Fast bowling", "bowling", "side_on", 3),
+      gate("fast_bowling", "Fast bowling", "bowling", "front_on", 0, 6),
+      gate("pull", "Pull", "batting", "side_on", 1),
+      gate("pull", "Pull", "batting", "front_on", 0),
+    ],
+  };
+  const ref = (id: string, player: string, source: string, origin: "browser" | "legacy_csv") => ({
+    id, shot: "pull", shot_name: "Pull", discipline: "batting", view: "side_on", player, handedness: "right",
+    source, origin, fps: 30, frame_count: 60, duration_s: 2, created_at: "2026-11-28T06:00:00Z",
+  });
+
+  test("a coach is told the page is admin only, and nothing admin is fetched", async () => {
+    const fetchMock = serve({ "/api/me": json(200, me("coach")) });
+    const { findByText, queryByRole } = render(() => <App router={makeRouter(memoryHistory("/admin/references"))} />);
+    expect(await findByText("Only the admin can see the reference register.")).toBeInTheDocument();
+    expect(queryByRole("link", { name: "References" })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(["/api/me"]);
+  });
+
+  test("the admin sees the gates with a needs-3+ mark, old CSVs apart, and the register", async () => {
+    serve({
+      "/api/me": json(200, me("admin")),
+      "/api/admin/shot-gates": json(200, gates),
+      "/api/admin/references": json(200, {
+        references: [
+          ref("r1", "Rohit Sharma", "2026 hackathon CSV Rohit_Pull_Shot.csv; source video unknown", "legacy_csv"),
+          ref("r2", "Test Pro", "https://example.com/clip", "browser"),
+          ref("r3", "Sneaky", "javascript:alert(1)", "browser"),
+        ],
+      }),
+    });
+    const { findByRole, getByRole, getByText } = render(() => <App router={makeRouter(memoryHistory("/admin/references"))} />);
+    expect(await findByRole("heading", { level: 1, name: "Reference register" })).toBeInTheDocument();
+    expect(await findByRole("link", { name: "References" })).toHaveAttribute("href", "/admin/references");
+
+    const fast = await findByRole("row", { name: /Fast bowling/ });
+    expect(fast).toHaveTextContent("3 references");
+    expect(fast).toHaveTextContent("ready for the test");
+    expect(fast).toHaveTextContent("0 references");
+    expect(fast).toHaveTextContent("needs 3+");
+    expect(fast).toHaveTextContent("+6 old CSV, not counted");
+    expect(getByRole("row", { name: /^Pull/ })).toHaveTextContent("1 reference");
+
+    // The register: an http(s) source is a link; any other text is not.
+    expect(await findByRole("row", { name: /Rohit Sharma/ })).toHaveTextContent("old CSV");
+    expect(getByRole("link", { name: "https://example.com/clip" })).toHaveAttribute("rel", "noopener noreferrer nofollow");
+    expect(getByText("javascript:alert(1)").closest("a")).toBeNull();
+    expect(getByRole("link", { name: "Stick figure: Test Pro, Pull" })).toHaveAttribute("href", "/admin/references/r2");
+
+    // The form offers the shots from the gates, grouped by discipline.
+    const select = getByRole("combobox", { name: /Shot/ }) as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).toEqual(["", "fast_bowling", "pull"]);
+  });
+
+  test("saving needs a read clip first", async () => {
+    const fetchMock = serve({
+      "/api/me": json(200, me("admin")),
+      "/api/admin/shot-gates": json(200, gates),
+      "/api/admin/references": json(200, { references: [] }),
+    });
+    const { findByRole, getByRole } = render(() => <App router={makeRouter(memoryHistory("/admin/references"))} />);
+    const form = (await findByRole("button", { name: "Save reference" })).closest("form")!;
+    fireEvent.submit(form);
+    expect(await findByRole("alert")).toHaveTextContent("Choose a pro clip first.");
+    expect(getByRole("button", { name: "Save reference" })).toBeEnabled();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toEqual([]);
+  });
+});
