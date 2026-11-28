@@ -1,8 +1,8 @@
 import { useParams } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, Errored, For, Loading, Match, Show, Switch } from "solid-js";
+import { createMemo, createSignal, Errored, For, Loading, Match, Show, Switch } from "solid-js";
 import { AnalysisError, getAnalysis, type Analysis as AnalysisData, type KeyFrame } from "../analyses";
 import { messages as m } from "../messages";
-import { drawSkeleton, inkFrom } from "../pose/skeleton";
+import { Plate } from "../pose/Plate";
 
 const seconds = (frame: number, fps: number) => (frame / fps).toFixed(2);
 
@@ -72,7 +72,11 @@ function Result(props: { a: AnalysisData }) {
           </span>
           <p class="note">{m.analysis.scoreLater}</p>
         </div>
-        <Plate a={props.a} />
+        <Plate
+          seq={props.a.pose_sequence}
+          start={props.a.key_frames[0]?.frame_index ?? Math.floor(props.a.pose_sequence.frames.length / 2)}
+          caption={m.analysis.plate}
+        />
       </div>
 
       <div class="result__right">
@@ -136,45 +140,5 @@ function Still(props: { k: KeyFrame; fps: number }) {
       </Switch>
       <span class="still__caption">{caption()}</span>
     </li>
-  );
-}
-
-/** The skeleton plate: the stick figure of one frame, with a frame slider. */
-function Plate(props: { a: AnalysisData }) {
-  const seq = () => props.a.pose_sequence;
-  const first = () => props.a.key_frames[0]?.frame_index ?? Math.floor(seq().frames.length / 2);
-  const [frame, setFrame] = createSignal<number>();
-  const [canvas, setCanvas] = createSignal<HTMLCanvasElement>();
-  const shown = () => frame() ?? first();
-
-  createEffect(
-    () => ({ c: canvas(), f: shown(), s: seq() }),
-    ({ c, f, s }) => {
-      const ctx = c?.getContext("2d");
-      if (!c || !ctx) return;
-      c.width = 720;
-      c.height = Math.round((720 * s.height) / s.width);
-      drawSkeleton(ctx, s.frames[f], inkFrom(c));
-    },
-  );
-
-  return (
-    <figure class="plate-figure">
-      <figcaption class="sheet__title">{m.analysis.plate}</figcaption>
-      <div class="plate" style={{ "aspect-ratio": `${seq().width} / ${seq().height}` }}>
-        <canvas ref={setCanvas} role="img" aria-label={m.analysis.plateFrame(shown() + 1, seq().frames.length, seconds(shown(), props.a.fps))} />
-      </div>
-      <label class="slider">
-        <span>{m.analysis.plateFrame(shown() + 1, seq().frames.length, seconds(shown(), props.a.fps))}</span>
-        <input
-          type="range"
-          min="0"
-          max={seq().frames.length - 1}
-          value={shown()}
-          aria-label={m.analysis.frameLabel}
-          onInput={(e) => setFrame(Number(e.currentTarget.value))}
-        />
-      </label>
-    </figure>
   );
 }

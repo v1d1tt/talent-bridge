@@ -7,6 +7,8 @@ import { Analysis } from "./pages/Analysis";
 import { Home, NotFound } from "./pages/Home";
 import { NewAnalysis } from "./pages/NewAnalysis";
 import { PoseBench } from "./pages/PoseBench";
+import { ReferenceView } from "./pages/ReferenceView";
+import { References } from "./pages/References";
 import { Settings } from "./pages/Settings";
 import { SignIn } from "./pages/SignIn";
 import { Welcome } from "./pages/Welcome";
@@ -19,6 +21,8 @@ const routes = [
   { path: "/welcome", component: Welcome },
   { path: "/analyses/new", component: NewAnalysis },
   { path: "/analyses/:id", component: Analysis },
+  { path: "/admin/references", component: References },
+  { path: "/admin/references/:id", component: ReferenceView },
   { path: "/lab/pose-benchmark", component: PoseBench },
   { path: "*404", component: NotFound },
 ] as const;
@@ -98,6 +102,9 @@ function SignedInNav(props: { me: Me }) {
       </span>
       <Show when={props.me.user.role === "athlete"}>
         <a href="/analyses/new">{m.nav.newAnalysis}</a>
+      </Show>
+      <Show when={props.me.user.role === "admin"}>
+        <a href="/admin/references">{m.nav.references}</a>
       </Show>
       <a href="/settings">{m.nav.settings}</a>
       <button type="button" class="link-button" aria-busy={busy() ? "true" : "false"} onClick={onSignOut}>

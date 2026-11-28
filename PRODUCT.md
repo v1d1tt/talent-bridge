@@ -48,7 +48,8 @@ The clip never leaves the device: pose extraction runs in the browser. Every sco
 
 ## Evidence on Hand
 
-- 14 pro pose sequences in `reference_data/` (git history) from the hackathon: Bumrah, Steyn, Malinga, Starc, Shami, Bhuvneshwar, Jadeja, Rashid, Kohli, AB de Villiers, Rohit (pull), Sachin (straight drive), plus 2 badminton files (out of scope). Views are not tagged yet.
+- 12 pro pose sequences from the hackathon, imported in slice 4 as old CSV references (ADR 0008): Bumrah, Steyn, Malinga, Starc, Shami, Bhuvneshwar (fast bowling), Jadeja (off spin), Rashid (leg spin), all front-on; Kohli (cover drive), AB de Villiers (sweep), Rohit (pull), Sachin (straight drive), side-on. They are drawn but do not count toward a shot gate. The CSV files are in git history only.
+- No browser references yet: the admin adds them on the reference register.
 - No real athlete data, no users, no testimonials, no accuracy figures. Do not invent any. Demo data must be labelled synthetic.
 - Pro broadcast footage must not be shown (no rights).
 

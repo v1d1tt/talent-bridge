@@ -53,6 +53,90 @@ func (ns NullClipView) Value() (driver.Value, error) {
 	return string(ns.ClipView), nil
 }
 
+type Discipline string
+
+const (
+	DisciplineBatting Discipline = "batting"
+	DisciplineBowling Discipline = "bowling"
+)
+
+func (e *Discipline) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Discipline(s)
+	case string:
+		*e = Discipline(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Discipline: %T", src)
+	}
+	return nil
+}
+
+type NullDiscipline struct {
+	Discipline Discipline
+	Valid      bool // Valid is true if Discipline is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullDiscipline) Scan(value interface{}) error {
+	if value == nil {
+		ns.Discipline, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Discipline.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullDiscipline) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Discipline), nil
+}
+
+type Handedness string
+
+const (
+	HandednessRight Handedness = "right"
+	HandednessLeft  Handedness = "left"
+)
+
+func (e *Handedness) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Handedness(s)
+	case string:
+		*e = Handedness(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Handedness: %T", src)
+	}
+	return nil
+}
+
+type NullHandedness struct {
+	Handedness Handedness
+	Valid      bool // Valid is true if Handedness is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullHandedness) Scan(value interface{}) error {
+	if value == nil {
+		ns.Handedness, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Handedness.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullHandedness) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Handedness), nil
+}
+
 type KeyFrameState string
 
 const (
@@ -94,6 +178,48 @@ func (ns NullKeyFrameState) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.KeyFrameState), nil
+}
+
+type ReferenceOrigin string
+
+const (
+	ReferenceOriginBrowser   ReferenceOrigin = "browser"
+	ReferenceOriginLegacyCsv ReferenceOrigin = "legacy_csv"
+)
+
+func (e *ReferenceOrigin) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ReferenceOrigin(s)
+	case string:
+		*e = ReferenceOrigin(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ReferenceOrigin: %T", src)
+	}
+	return nil
+}
+
+type NullReferenceOrigin struct {
+	ReferenceOrigin ReferenceOrigin
+	Valid           bool // Valid is true if ReferenceOrigin is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullReferenceOrigin) Scan(value interface{}) error {
+	if value == nil {
+		ns.ReferenceOrigin, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ReferenceOrigin.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullReferenceOrigin) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ReferenceOrigin), nil
 }
 
 type UserRole string
@@ -172,6 +298,38 @@ type KeyFrame struct {
 	ByteSize   pgtype.Int4
 	CreatedAt  pgtype.Timestamptz
 	SettledAt  pgtype.Timestamptz
+}
+
+type ProReference struct {
+	ID           pgtype.UUID
+	ShotID       int16
+	View         ClipView
+	Player       string
+	Handedness   Handedness
+	Source       string
+	Origin       ReferenceOrigin
+	Fps          float32
+	FrameCount   int32
+	PoseSequence []byte
+	CreatedBy    pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+}
+
+type Shot struct {
+	ID         int16
+	Discipline Discipline
+	Code       string
+	Name       string
+	SortOrder  int16
+}
+
+type ShotGate struct {
+	ShotID         int16
+	View           ClipView
+	ReferenceCount int32
+	LopoPassed     bool
+	LopoRunAt      pgtype.Timestamptz
+	Enabled        bool
 }
 
 type User struct {

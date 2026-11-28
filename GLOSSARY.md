@@ -25,7 +25,11 @@ The words below have one meaning everywhere in Talent-Bridge: in code, in the da
 | **Phase** | A named key moment inside a shot. Bowling: `back_foot_contact`, `front_foot_contact`, `release`. Batting: `stance`, `stride`, `contact`. |
 | **Joint angle** | An angle at one joint (for example front knee, bowling-arm elbow), computed from three landmarks. |
 | **Metric** | A measured value used for scoring: a joint angle at a phase, or a distance such as feet gap. Definitions follow PoseForge (arXiv 2608.05971). |
-| **Reference** | The pose sequence of one pro player for one shot and one view, with player name and source. Created on the admin page. |
+| **Reference** | The pose sequence of one pro player for one shot and one view, with player name, handedness and source. Created on the admin page with the same browser pose code as an analysis. No picture of a pro clip is stored or shown. |
+| **Source** (reference) | Where a pro clip came from: a URL or a short note. Shown as a link only when it is an http(s) URL. |
+| **Old CSV reference** | A reference imported once from the 2026 hackathon CSVs (`origin = legacy_csv`, ADR 0008). It has 13 body points and no world positions. It is drawn, but it does not count toward a shot gate. |
+| **Reference register** | The admin page (`/admin/references`) that lists every reference in ruled rows and shows the shot gates. |
+| **Not measured** (landmark) | A landmark with all six values 0: the clip's source never had that point (old CSV references). Different from a landmark the model could not see (low visibility). |
 | **Reference set** | All references for one shot + view. |
 | **DTW** | Dynamic time warping. Aligns two pose sequences of different speed so the same moments line up. Written by hand in Go. |
 | **Fault** | A metric at a phase that is outside the reference range by more than its tolerance. Has a size and a rank. |

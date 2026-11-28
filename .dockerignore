@@ -5,7 +5,6 @@
 .local
 bin
 docs
-reference_data
 web/node_modules
 web/dist
 web/test-results
