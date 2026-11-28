@@ -158,4 +158,4 @@ The app serves MediaPipe's WebAssembly runtime and the Pose Landmarker models (l
 
 ## Old code
 
-The 2026 hackathon code (Python, OpenCV, an LSTM, Gemini) was removed in slice 1; the pro broadcast clips and model files were also removed from the git history. The 12 pro cricket pose CSVs in `reference_data/cricket/` are imported by `cmd/import-legacy` as old CSV references (ADR 0008); after the import they are removed from the repo (with the 2 out-of-scope badminton CSVs), and git history keeps them.
+The 2026 hackathon code (Python, OpenCV, an LSTM, Gemini) was removed in slice 1; the pro broadcast clips and model files were also removed from the git history. The 12 pro cricket pose CSVs were imported into the database in slice 4 as old CSV references (ADR 0008) and then removed from the repo, together with 2 out-of-scope badminton CSVs. They are still in the git history (`git show dffc74e:reference_data/cricket/Bumrah.csv`); a few real rows are kept as test data in `internal/legacy/testdata/`.

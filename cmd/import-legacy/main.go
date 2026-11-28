@@ -6,6 +6,11 @@
 //
 // It is safe to run twice: a file imported before is skipped. The imported
 // references are marked legacy_csv and do not count toward a shot gate.
+//
+// The import ran on 2026-11-28, and the files were then removed from the
+// repo. To run it again (a new database), restore them from git history:
+//
+//	git checkout dffc74e -- reference_data/cricket
 package main
 
 import (
