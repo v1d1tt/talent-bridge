@@ -12,6 +12,9 @@ export function Home() {
         <For each={m.home.steps}>{(step) => <li>{step}</li>}</For>
       </ol>
       <p class="note">{m.home.buildNote}</p>
+      <p>
+        <a href="/analyses/new">{m.home.start}</a>
+      </p>
     </>
   );
 }

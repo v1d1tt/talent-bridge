@@ -1,0 +1,15 @@
+Talent-Bridge serves these files unchanged, under the Apache License 2.0
+(the LICENSE file next to this one):
+
+1. MediaPipe Tasks Vision for Web (@mediapipe/tasks-vision, npm), version in
+   the folder name: vision_wasm_internal.js and vision_wasm_internal.wasm.
+   Copyright The MediaPipe Authors. https://github.com/google-ai-edge/mediapipe
+
+2. MediaPipe Pose Landmarker models, float16 version 1:
+   pose_landmarker_lite.task and pose_landmarker_full.task, from
+   https://storage.googleapis.com/mediapipe-models/pose_landmarker/
+   Copyright Google LLC. Model card: BlazePose GHUM 3D
+   https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf
+
+The .gz files are gzip copies of the same files, made at build time so that
+browsers download less. No file was modified.

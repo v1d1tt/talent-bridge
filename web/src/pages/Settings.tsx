@@ -2,12 +2,15 @@ import { createMemo, createSignal, Errored, isPending, Loading, Show } from "sol
 import { fetchHealth, type HealthReport } from "../health";
 import { messages as m } from "../messages";
 
-/** Settings page. For now it holds only the system status sheet. */
+/** Settings page: the system status sheet, and the pose model benchmark link. */
 export function Settings() {
   return (
     <>
       <h1 class="page__title">{m.settings.heading}</h1>
       <StatusSheet />
+      <p class="note">
+        <a href="/lab/pose-benchmark">{m.bench.heading}</a>
+      </p>
     </>
   );
 }

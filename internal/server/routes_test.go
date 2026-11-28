@@ -29,6 +29,11 @@ var routeTable = map[string]struct {
 	"POST /auth/signout":        {"", [5]int{401, 204, 204, 204, 204}},
 	"GET /api/me":               {"", [5]int{200, 200, 200, 200, 200}}, // signed out: {"user": null}
 	"POST /api/me/role":         {`{"role":"athlete"}`, [5]int{401, 200, 409, 409, 409}},
+	// Athletes only. This server has no analysis service (no database), so an
+	// athlete gets 503; internal/analysis tests the owner rule with a database.
+	"POST /api/analyses":                       {"", [5]int{401, 403, 503, 403, 403}},
+	"GET /api/analyses/{id}":                   {"", [5]int{401, 403, 503, 403, 403}},
+	"POST /api/analyses/{id}/key-frames/check": {"", [5]int{401, 403, 503, 403, 403}},
 }
 
 func TestRouteRoleTable(t *testing.T) {

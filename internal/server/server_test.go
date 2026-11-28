@@ -106,3 +106,42 @@ func must(t *testing.T, err error) {
 		t.Fatal(err)
 	}
 }
+
+// The pose model's WebAssembly file is 14 MB; a gzip copy made at build time
+// is served to browsers that accept it (most of a phone's download).
+func TestPrecompressedFilesAreServedToBrowsersThatAcceptGzip(t *testing.T) {
+	dir := t.TempDir()
+	must(t, os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html>"), 0o644))
+	must(t, os.MkdirAll(filepath.Join(dir, "mediapipe", "1.0.0"), 0o755))
+	must(t, os.WriteFile(filepath.Join(dir, "mediapipe", "1.0.0", "x.wasm"), []byte("plain"), 0o644))
+	must(t, os.WriteFile(filepath.Join(dir, "mediapipe", "1.0.0", "x.wasm.gz"), []byte("gzipped"), 0o644))
+	srv := httptest.NewServer(server.New(server.Config{StaticDir: dir, Probe: upProbe{}, Version: "test"}))
+	t.Cleanup(srv.Close)
+
+	for _, tc := range []struct {
+		accept, body, encoding string
+	}{
+		{"gzip, deflate, br", "gzipped", "gzip"},
+		{"", "plain", ""},
+		{"br", "plain", ""},
+	} {
+		req, _ := http.NewRequest(http.MethodGet, srv.URL+"/mediapipe/1.0.0/x.wasm", nil)
+		if tc.accept != "" {
+			req.Header.Set("Accept-Encoding", tc.accept)
+		}
+		// A plain transport: Go's default one would ask for gzip and unzip it.
+		res, err := (&http.Transport{DisableCompression: true}).RoundTrip(req)
+		must(t, err)
+		b, _ := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if string(b) != tc.body || res.Header.Get("Content-Encoding") != tc.encoding {
+			t.Errorf("Accept-Encoding %q: body %q, Content-Encoding %q; want %q, %q", tc.accept, b, res.Header.Get("Content-Encoding"), tc.body, tc.encoding)
+		}
+		if ct := res.Header.Get("Content-Type"); ct != "application/wasm" {
+			t.Errorf("Accept-Encoding %q: Content-Type %q, want application/wasm", tc.accept, ct)
+		}
+		if !strings.Contains(res.Header.Get("Vary"), "Accept-Encoding") || !strings.Contains(res.Header.Get("Cache-Control"), "immutable") {
+			t.Errorf("Vary %q, Cache-Control %q", res.Header.Get("Vary"), res.Header.Get("Cache-Control"))
+		}
+	}
+}

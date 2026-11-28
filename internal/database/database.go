@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -92,6 +93,12 @@ func (d *DB) migrate(ctx context.Context) (int64, error) {
 	}
 	d.schemaVersion = v
 	return v, nil
+}
+
+// Tx runs fn in one database transaction: it commits when fn returns nil and
+// rolls back otherwise.
+func (d *DB) Tx(ctx context.Context, fn func(*store.Queries) error) error {
+	return pgx.BeginFunc(ctx, d.pool, func(tx pgx.Tx) error { return fn(d.Queries.WithTx(tx)) })
 }
 
 // ErrNotConfigured is the probe error when DATABASE_URL is empty.

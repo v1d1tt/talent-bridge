@@ -3,7 +3,10 @@ import type { JSX } from "@solidjs/web";
 import { createSignal, Loading, Show } from "solid-js";
 import { signOut, type Me } from "./me";
 import { messages as m } from "./messages";
+import { Analysis } from "./pages/Analysis";
 import { Home, NotFound } from "./pages/Home";
+import { NewAnalysis } from "./pages/NewAnalysis";
+import { PoseBench } from "./pages/PoseBench";
 import { Settings } from "./pages/Settings";
 import { SignIn } from "./pages/SignIn";
 import { Welcome } from "./pages/Welcome";
@@ -14,6 +17,9 @@ const routes = [
   { path: "/settings", component: Settings },
   { path: "/signin", component: SignIn },
   { path: "/welcome", component: Welcome },
+  { path: "/analyses/new", component: NewAnalysis },
+  { path: "/analyses/:id", component: Analysis },
+  { path: "/lab/pose-benchmark", component: PoseBench },
   { path: "*404", component: NotFound },
 ] as const;
 
@@ -90,6 +96,9 @@ function SignedInNav(props: { me: Me }) {
         {props.me.user.display_name}
         <Show when={props.me.user.role}>{(role) => <span class="masthead__role">{m.roles[role()]}</span>}</Show>
       </span>
+      <Show when={props.me.user.role === "athlete"}>
+        <a href="/analyses/new">{m.nav.newAnalysis}</a>
+      </Show>
       <a href="/settings">{m.nav.settings}</a>
       <button type="button" class="link-button" aria-busy={busy() ? "true" : "false"} onClick={onSignOut}>
         {busy() ? m.nav.signingOut : m.nav.signOut}

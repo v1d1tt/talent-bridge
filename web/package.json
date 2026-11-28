@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "mediapipe": "node scripts/mediapipe.mjs",
+    "predev": "node scripts/mediapipe.mjs",
+    "prebuild": "node scripts/mediapipe.mjs",
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
@@ -10,6 +13,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.3",
     "@solidjs/router": "2.0.1",
     "@solidjs/web": "2.0.3",
     "solid-js": "2.0.3"

@@ -11,6 +11,91 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ClipView string
+
+const (
+	ClipViewSideOn  ClipView = "side_on"
+	ClipViewFrontOn ClipView = "front_on"
+)
+
+func (e *ClipView) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ClipView(s)
+	case string:
+		*e = ClipView(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ClipView: %T", src)
+	}
+	return nil
+}
+
+type NullClipView struct {
+	ClipView ClipView
+	Valid    bool // Valid is true if ClipView is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullClipView) Scan(value interface{}) error {
+	if value == nil {
+		ns.ClipView, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ClipView.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullClipView) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ClipView), nil
+}
+
+type KeyFrameState string
+
+const (
+	KeyFrameStatePending  KeyFrameState = "pending"
+	KeyFrameStateUploaded KeyFrameState = "uploaded"
+	KeyFrameStateRejected KeyFrameState = "rejected"
+)
+
+func (e *KeyFrameState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = KeyFrameState(s)
+	case string:
+		*e = KeyFrameState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for KeyFrameState: %T", src)
+	}
+	return nil
+}
+
+type NullKeyFrameState struct {
+	KeyFrameState KeyFrameState
+	Valid         bool // Valid is true if KeyFrameState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullKeyFrameState) Scan(value interface{}) error {
+	if value == nil {
+		ns.KeyFrameState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.KeyFrameState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullKeyFrameState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.KeyFrameState), nil
+}
+
 type UserRole string
 
 const (
@@ -54,6 +139,20 @@ func (ns NullUserRole) Value() (driver.Value, error) {
 	return string(ns.UserRole), nil
 }
 
+type Analysis struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	Fps          float32
+	FrameCount   int32
+	PoseSequence []byte
+	View         NullClipView
+	Metrics      []byte
+	Score        pgtype.Int2
+	Faults       []byte
+	Coaching     []byte
+	CreatedAt    pgtype.Timestamptz
+}
+
 type AuthSession struct {
 	IDHash     []byte
 	UserID     pgtype.UUID
@@ -61,6 +160,18 @@ type AuthSession struct {
 	CreatedAt  pgtype.Timestamptz
 	LastSeenAt pgtype.Timestamptz
 	ExpiresAt  pgtype.Timestamptz
+}
+
+type KeyFrame struct {
+	ID         pgtype.UUID
+	AnalysisID pgtype.UUID
+	FrameIndex int32
+	Phase      pgtype.Text
+	ObjectPath string
+	State      KeyFrameState
+	ByteSize   pgtype.Int4
+	CreatedAt  pgtype.Timestamptz
+	SettledAt  pgtype.Timestamptz
 }
 
 type User struct {

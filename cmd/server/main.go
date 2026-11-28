@@ -22,7 +22,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/v1d1tt/talent-bridge/internal/analysis"
 	"github.com/v1d1tt/talent-bridge/internal/auth"
+	"github.com/v1d1tt/talent-bridge/internal/blob"
 	"github.com/v1d1tt/talent-bridge/internal/database"
 	"github.com/v1d1tt/talent-bridge/internal/health"
 	"github.com/v1d1tt/talent-bridge/internal/server"
@@ -59,6 +61,8 @@ func run() error {
 
 	var probe health.Probe = database.NotConfigured{}
 	var signIn *auth.Service
+	var analyses *analysis.Service
+	var blobOrigin string
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		db, err := database.Open(ctx, url)
 		if err != nil {
@@ -75,6 +79,22 @@ func run() error {
 			signIn = auth.New(cfg, db.Queries)
 			slog.Info("sign-in is on", "issuer", cfg.Issuer, "public_url", cfg.PublicURL, "admins", len(cfg.AdminEmails))
 		}
+		var store *blob.Store
+		switch cfg, err := blob.LoadConfig(os.Getenv, os.Getenv("PUBLIC_URL")); {
+		case errors.Is(err, blob.ErrNotConfigured):
+			slog.Warn("key frames are off: " + err.Error())
+		case err != nil:
+			return err
+		default:
+			if store, err = blob.New(cfg); err != nil {
+				return err
+			}
+			blobOrigin = store.Origin()
+			slog.Info("key frames are on", "storage", blobOrigin, "container", cfg.Container)
+		}
+		analyses = analysis.New(db, store)
+		// Settle key frames whose upload URLs expired (deletes junk and leftovers).
+		go analyses.RunSweeper(ctx, 5*time.Minute)
 		// Migrate in the background, so the first visitor does not wait for it.
 		go func() {
 			if _, err := db.Probe(ctx); err != nil {
@@ -87,7 +107,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + cmp.Or(os.Getenv("PORT"), "8080"),
-		Handler:           server.New(server.Config{StaticDir: cmp.Or(os.Getenv("STATIC_DIR"), "web/dist"), Probe: probe, Version: version, Auth: signIn}),
+		Handler:           server.New(server.Config{StaticDir: cmp.Or(os.Getenv("STATIC_DIR"), "web/dist"), Probe: probe, Version: version, Auth: signIn, Analyses: analyses, BlobOrigin: blobOrigin}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

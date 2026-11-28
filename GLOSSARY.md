@@ -35,7 +35,9 @@ The words below have one meaning everywhere in Talent-Bridge: in code, in the da
 | **Shot gate** | The rule that a shot + view is offered to users only when its reference set has 3 or more references and passes the leave-one-pro-out test. |
 | **Leave-one-pro-out test** | For each reference, score it against the other references of the same set. Each must score above the gate threshold. Runs in CI. |
 | **Session** (analysis) | One analysed clip: pose sequence, shot, view, score, faults, key frames, coaching text. Stored in the `analyses` table. Not the same as an auth session. |
-| **Key frame** | A still JPEG at a phase (for example release or contact), cut in the browser and stored in Azure Blob Storage. 2-3 per session. |
+| **Key frame** | A still JPEG at a phase (for example release or contact), cut in the browser and stored in Azure Blob Storage. 2-3 per session. Until phases exist (slice 5), key frames are the moments of most movement. States: `pending` (upload URL given out), `uploaded` (checked: a JPEG of a sane size), `rejected` (not a valid JPEG; deleted). |
+| **Pose model** | The MediaPipe Pose Landmarker model that runs in the browser: `lite` or `full`. Picked by a benchmark in slice 3. |
+| **Signed URL** (SAS) | A short-lived Azure Blob Storage URL whose query string is signed by the server (a shared access signature). It allows one action on one key frame: create it (10 minutes) or read it (15 minutes). On Azure it is a user delegation SAS: signed with a key the app gets with its managed identity, so no storage account key exists. |
 
 ## Coaching
 
