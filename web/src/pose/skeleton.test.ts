@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BODY, drawnSegments, head, measured } from "./skeleton";
+import { BODY, drawnSegments, fitFrame, fitView, head, measured } from "./skeleton";
 import { LANDMARKS, type Landmark } from "./types";
 
 const seen = (x: number, y: number): Landmark => [x, y, 0.9, 0.1, 0.1, 0.1];
@@ -40,5 +40,64 @@ describe("not measured landmarks", () => {
     expect(h.x).toBeCloseTo(frame[0][0]);
     expect(h.y).toBeCloseTo(frame[0][1]);
     expect(h.fromEars).toBe(false);
+  });
+});
+
+describe("the plate zooms to fit", () => {
+  // The box around the measured points of every frame of a sequence.
+  const box = (frames: Landmark[][]) => {
+    const pts = frames.flat().filter(measured);
+    const xs = pts.map((l) => l[0]);
+    const ys = pts.map((l) => l[1]);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  };
+  // A small figure, like an old CSV taken from a wide broadcast shot.
+  const small = (dx: number): Landmark[] =>
+    Array.from({ length: LANDMARKS }, (_, l) =>
+      OLD_CSV_SLOTS.includes(l) ? seen(0.45 + dx + (l % 3) * 0.02, 0.4 + l / 200) : NOT_MEASURED,
+    );
+
+  it("the whole movement fills the plate, centred, with the same zoom on both axes", () => {
+    const frames = [small(0), small(0.05)];
+    const before = box(frames);
+    const v = fitView(frames);
+    const after = box(frames.map((f) => fitFrame(f, v)));
+    const longest = Math.max(after.x1 - after.x0, after.y1 - after.y0);
+    expect(longest).toBeCloseTo(0.84);
+    expect((after.x0 + after.x1) / 2).toBeCloseTo(0.5);
+    expect((after.y0 + after.y1) / 2).toBeCloseTo(0.5);
+    expect((after.x1 - after.x0) / (after.y1 - after.y0)).toBeCloseTo((before.x1 - before.x0) / (before.y1 - before.y0));
+  });
+
+  it("one view for all frames: a still figure keeps its size while the slider moves", () => {
+    const frames = [small(0), small(0.05)];
+    const v = fitView(frames);
+    const [a, b] = frames.map((f) => box([fitFrame(f, v)]));
+    expect(a.x1 - a.x0).toBeCloseTo(b.x1 - b.x0);
+    expect(a.x0).not.toBeCloseTo(b.x0); // and it still moves across the plate
+  });
+
+  it("not-measured landmarks stay all 0, so they are still skipped", () => {
+    const f = small(0);
+    const out = fitFrame(f, fitView([f]));
+    for (let l = 0; l < LANDMARKS; l++) {
+      if (!OLD_CSV_SLOTS.includes(l)) expect(out[l]).toEqual(NOT_MEASURED);
+    }
+    expect(drawnSegments(out)).toHaveLength(12);
+  });
+
+  it("frames with no person do not change the zoom", () => {
+    const noPerson: Landmark[] = Array.from({ length: LANDMARKS }, () => [0.01, 0.99, 0, 0, 0, 0]);
+    expect(fitView([small(0), noPerson])).toEqual(fitView([small(0)]));
+  });
+
+  it("never zooms out past the full video, and leaves an empty sequence as it is", () => {
+    const wild: Landmark[] = Array.from({ length: LANDMARKS }, (_, l) => seen(-0.5 + l / 16, 1.4 - l / 20));
+    const v = fitView([wild]);
+    expect(v.k).toBeCloseTo(0.84);
+    expect(v.cx).toBeCloseTo(0.5);
+    expect(v.cy).toBeCloseTo(0.5);
+    expect(fitView([])).toEqual({ k: 1, cx: 0.5, cy: 0.5 });
+    expect(fitView([Array.from({ length: LANDMARKS }, () => NOT_MEASURED)])).toEqual({ k: 1, cx: 0.5, cy: 0.5 });
   });
 });

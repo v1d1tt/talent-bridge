@@ -40,6 +40,41 @@ export function head(frame: Landmark[]) {
     : { x: n[0], y: n[1], fromEars, ears: [0, 0, 0, 0] };
 }
 
+/** How the plate zooms: x and y move by (x - cx) * k + 0.5, the same k on both axes. */
+export type View = { k: number; cx: number; cy: number };
+
+/** Free space kept on each side of the figure, as a fraction of the plate. */
+const MARGIN = 0.08;
+
+/**
+ * The zoom that makes the box around every measured point of the whole
+ * sequence fill the plate. One view for all frames, so the figure keeps
+ * its size and place while the slider moves. The box is cut to the video
+ * frame: the plate never zooms out past the full video.
+ */
+export function fitView(frames: Landmark[][]): View {
+  let [x0, y0, x1, y1] = [1, 1, 0, 0];
+  for (const f of frames) {
+    if (f.every((l) => l[VIS] === 0)) continue; // no person: drawSkeleton skips it too
+    for (const l of f) {
+      if (!measured(l)) continue;
+      const x = Math.min(1, Math.max(0, l[0]));
+      const y = Math.min(1, Math.max(0, l[1]));
+      [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+    }
+  }
+  const span = Math.max(x1 - x0, y1 - y0);
+  if (span <= 0) return { k: 1, cx: 0.5, cy: 0.5 };
+  return { k: (1 - 2 * MARGIN) / span, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+}
+
+/** One frame moved by a view. A not-measured landmark stays all 0. */
+export function fitFrame(frame: Landmark[], v: View): Landmark[] {
+  return frame.map((l) =>
+    measured(l) ? [(l[0] - v.cx) * v.k + 0.5, (l[1] - v.cy) * v.k + 0.5, l[2], l[3], l[4], l[5]] : l,
+  );
+}
+
 export type Ink = {
   line: string;
   faint: string;
