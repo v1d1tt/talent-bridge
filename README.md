@@ -21,7 +21,7 @@ Talent-Bridge started as my first hackathon build (Feb 2026), which the team did
 - **Pose in the browser** (`/analyses/new`, athletes): record or choose a 1-10 s clip. MediaPipe Pose Landmarker (WebAssembly, GPU or CPU) reads every 1/30 s of it on the device and draws the stick figure live over the video. **The clip never leaves the device**; a Playwright test records every request of the flow and fails if any carries video bytes.
 - **Saved analysis:** the server checks the pose sequence (15-600 frames, 15-60 fps, 1-10 s, exactly 33 landmarks of 6 values, every value in range) and answers 422 with a reason otherwise. It stores the sequence compressed (fixed-point, delta-coded varints, DEFLATE) in Postgres. No score yet: scoring is slice 5.
 - **Key frames:** the browser cuts 3 JPEG stills (for now the moments of most movement; phases come with scoring) and uploads them **straight to Azure Blob Storage** with short-lived signed URLs (user delegation SAS, create-only, 10 minutes). The server checks each upload (a JPEG of 100 B-512 KiB) and a sweep deletes anything else once the upload window closes. The result page (`/analyses/<id>`, owner only) shows the stick figure plate, the clip's numbers and the key frames through 15-minute read URLs.
-- **Pose model benchmark** (`/lab/pose-benchmark`, linked from Settings): lite vs full on one clip, on the device. Results are in [docs/learning/03.md](docs/learning/03.md).
+- **Pose model benchmark** (`/lab/pose-benchmark`, linked from Settings): lite vs full on one clip, on the device. The app uses the full model; the numbers and the reason are in [docs/learning/03.md](docs/learning/03.md).
 
 | Route | Who may call it |
 |---|---|
@@ -147,7 +147,7 @@ How CI, Docker and Azure Container Apps fit together is explained for beginners 
 
 ## Third-party files
 
-The app serves MediaPipe's WebAssembly runtime and the Pose Landmarker models (lite and full, float16 v1) unchanged under the Apache License 2.0; the licence and a notice are served with them at `/mediapipe/LICENSE` and `/mediapipe/NOTICE` ([web/third_party/mediapipe/](web/third_party/mediapipe/)). The Playwright test clip (`web/e2e/fixtures/side-on.webm`) is a 2 s cut of the owner's own video, used with consent.
+The app serves MediaPipe's WebAssembly runtime and the Pose Landmarker models (lite and full, float16 v1) unchanged under the Apache License 2.0; the licence and a notice are served with them at `/mediapipe/LICENSE` and `/mediapipe/NOTICE` ([web/third_party/mediapipe/](web/third_party/mediapipe/)). The Playwright test clip (`web/e2e/fixtures/side-on.webm`) is a 2 s cut of a bowling clip the owner filmed, used with the bowler's consent.
 
 ## Old code
 

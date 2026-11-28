@@ -7,8 +7,8 @@ import { expect, test, type Page, type Request } from "@playwright/test";
 // Azurite. Every request the page makes is recorded, and none may carry the
 // video: not in a body, not in a URL.
 //
-// The fixture is a 2 s, 360p, silent WebM cut of the owner's own side-on
-// clip (committed with the owner's consent). WebM, because Playwright's
+// The fixture is a 2 s, 360p, silent WebM cut of a side-on bowling clip
+// the owner filmed (committed with the bowler's consent). WebM, because Playwright's
 // Chromium has no H.264 decoder.
 
 const clipPath = fileURLToPath(new URL("./fixtures/side-on.webm", import.meta.url));
