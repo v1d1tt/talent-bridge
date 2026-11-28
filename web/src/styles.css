@@ -535,10 +535,25 @@ a:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.bench {
+/* Seven columns do not fit a phone: the table scrolls sideways in its own box. */
+.bench-scroll {
+  overflow-x: auto;
   margin: var(--space-3) 0;
+}
+
+.bench {
+  min-width: 36rem;
 
   & th {
     width: auto;
+  }
+
+  & th.num,
+  & td.num {
+    padding-left: var(--space-2);
+  }
+
+  & th.num {
+    white-space: normal;
   }
 }

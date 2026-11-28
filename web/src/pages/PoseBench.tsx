@@ -124,36 +124,38 @@ export function PoseBench() {
         {status()}
       </p>
       <Show when={rows().length > 0}>
-        <table class="ruled bench">
-          <thead>
-            <tr>
-              <th scope="col">{m.bench.model}</th>
-              <th scope="col">{m.bench.delegate}</th>
-              <th scope="col" class="num">{m.bench.load}</th>
-              <th scope="col" class="num">{m.bench.mean}</th>
-              <th scope="col" class="num">{m.bench.p95}</th>
-              <th scope="col" class="num">{m.bench.seen}</th>
-              <th scope="col" class="num">{m.bench.jitter}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={rows()}>
-              {(r) => (
-                <tr>
-                  <td>{r.model}</td>
-                  <td>{r.delegate}</td>
-                  <td class="num">{Math.round(r.loadMs)} ms</td>
-                  <td class="num">{r.meanMs.toFixed(1)} ms</td>
-                  <td class="num">{r.p95Ms.toFixed(1)} ms</td>
-                  <td class="num">
-                    {r.seen} / {r.frames}
-                  </td>
-                  <td class="num">{r.jitter.toFixed(2)}</td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
+        <div class="bench-scroll">
+          <table class="ruled bench">
+            <thead>
+              <tr>
+                <th scope="col">{m.bench.model}</th>
+                <th scope="col">{m.bench.delegate}</th>
+                <th scope="col" class="num">{m.bench.load}</th>
+                <th scope="col" class="num">{m.bench.mean}</th>
+                <th scope="col" class="num">{m.bench.p95}</th>
+                <th scope="col" class="num">{m.bench.seen}</th>
+                <th scope="col" class="num">{m.bench.jitter}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={rows()}>
+                {(r) => (
+                  <tr>
+                    <td>{r.model}</td>
+                    <td>{r.delegate}</td>
+                    <td class="num">{Math.round(r.loadMs)} ms</td>
+                    <td class="num">{r.meanMs.toFixed(1)} ms</td>
+                    <td class="num">{r.p95Ms.toFixed(1)} ms</td>
+                    <td class="num">
+                      {r.seen} / {r.frames}
+                    </td>
+                    <td class="num">{r.jitter.toFixed(2)}</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </div>
         <p class="note">{m.bench.jitterHint}</p>
         <p class="note">
           {m.bench.device}: {navigator.userAgent}
