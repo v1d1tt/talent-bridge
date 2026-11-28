@@ -1,6 +1,6 @@
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import { messages as m } from "../messages";
-import { drawSkeleton, inkFrom } from "./skeleton";
+import { drawSkeleton, fitFrame, fitView, inkFrom } from "./skeleton";
 import type { PoseSequence } from "./types";
 
 const seconds = (frame: number, fps: number) => (frame / fps).toFixed(2);
@@ -8,22 +8,25 @@ const seconds = (frame: number, fps: number) => (frame / fps).toFixed(2);
 /**
  * The skeleton plate: the stick figure of one frame of a pose sequence,
  * with a frame slider. Used for an athlete's analysis and for a pro
- * reference (only the figure is shown; no picture of the clip).
+ * reference (only the figure is shown; no picture of the clip). The
+ * figure is zoomed so the whole movement fills the plate (fitView).
  */
 export function Plate(props: { seq: PoseSequence; start: number; caption: string }) {
   const [frame, setFrame] = createSignal<number>();
   const [canvas, setCanvas] = createSignal<HTMLCanvasElement>();
   const shown = () => frame() ?? props.start;
   const label = () => m.plate.frame(shown() + 1, props.seq.frames.length, seconds(shown(), props.seq.fps));
+  const view = createMemo(() => fitView(props.seq.frames));
 
   createEffect(
-    () => ({ c: canvas(), f: shown(), s: props.seq }),
-    ({ c, f, s }) => {
+    () => ({ c: canvas(), f: shown(), s: props.seq, v: view() }),
+    ({ c, f, s, v }) => {
       const ctx = c?.getContext("2d");
       if (!c || !ctx) return;
       c.width = 720;
       c.height = Math.round((720 * s.height) / s.width);
-      drawSkeleton(ctx, s.frames[f], inkFrom(c));
+      const shownFrame = s.frames[f];
+      drawSkeleton(ctx, shownFrame && fitFrame(shownFrame, v), inkFrom(c));
     },
   );
 
