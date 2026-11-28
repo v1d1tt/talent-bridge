@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
+import { unexpected } from "./console";
 
 // The admin's reference flow (slice 4): a pro clip goes through the same
 // browser pose code as an athlete's clip, and only the pose sequence is
@@ -20,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }) => {
-  expect(errors.get(page)).toEqual([]);
+  expect(unexpected(errors.get(page) ?? [])).toEqual([]);
 });
 
 async function signIn(page: Page, email: string, role?: "athlete") {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page, type Request } from "@playwright/test";
+import { unexpected } from "./console";
 
 // The privacy check of ADR 0001: a real clip goes through the real page,
 // the real pose model (MediaPipe, in this Chromium), the real server and
@@ -24,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }) => {
-  expect(errors.get(page)).toEqual([]);
+  expect(unexpected(errors.get(page) ?? [])).toEqual([]);
 });
 
 async function signInAsAthlete(page: Page) {
